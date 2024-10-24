@@ -7,13 +7,13 @@
 
 class linalg {
     typedef std::vector<std::vector<double>> Matrix;
-    
+
 public:
     std::string shape(const Matrix &m) {
         return std::to_string(m.size()) + ", " +std::to_string(m[0].size());
     }
 
-    Matrix generateZeros(int a, int b) {
+    Matrix generateZeros(const int a, const int b) {
         Matrix result(a, std::vector<double>(b));
 
         for (size_t i = 0; i < a; i++) {
@@ -42,8 +42,7 @@ public:
         return dotProduct;
     }
     //This function computes the matmul product of two matrices
-    Matrix &matmul(const std::vector<std::vector<double> > &a,
-                                             const std::vector<std::vector<double> > &b) {
+    Matrix &matmul(const Matrix &a, const Matrix &b) {
         /*
         Result[i][j]=
             v=0
@@ -71,7 +70,7 @@ public:
     }
 
     // Element wise addition
-    Matrix  add(Matrix &a, Matrix &b) {
+    Matrix add(const Matrix &a, const Matrix &b) {
         if (a.size() != b.size() || a[0].size() != b[0].size()) {
             throw std::invalid_argument("Matrices not the same shape for addition");
         }
@@ -102,7 +101,7 @@ public:
         return result;
     }
 
-    Matrix  transpose(Matrix &m) {
+    Matrix transpose(const Matrix &m) {
         // Initialize transposed matrix with swapped dimensions
         Matrix transposed(m[0].size(), std::vector<double>(m.size()));
 
@@ -114,7 +113,7 @@ public:
         return transposed;
     }
 
-    Matrix  pow(Matrix &m, double exponent) {
+    Matrix pow(const Matrix &m, const double exponent) {
         // Copy the current matrix
         Matrix result(m.size(), std::vector<double>(m[0].size()));
 
@@ -127,11 +126,11 @@ public:
         return result;
     }
 
-    Matrix  sqrt(Matrix &m) {
+    Matrix sqrt(const Matrix &m) {
         return pow(m, 0.5);
     }
 
-    Matrix  sum(Matrix &m, int axis) {
+    Matrix sum(const Matrix &m, const int axis) {
         //This function assumes keepdims = True
         if (axis == 0) {
             // Sum along columns, index 1 represents sum.
@@ -181,7 +180,7 @@ public:
     }
 
     //Element-wise division
-    Matrix  division(Matrix &a, Matrix &b) {
+    Matrix division(const Matrix &a, const Matrix &b) {
         // Ensure dimensions match -- broadcasting b in L2 Norm
         if (a[0].size() != b[0].size()) {
             throw std::invalid_argument("Shape mismatch in element-wise division");
