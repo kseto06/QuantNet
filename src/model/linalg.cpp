@@ -13,15 +13,8 @@ public:
         return std::to_string(m.size()) + ", " +std::to_string(m[0].size());
     }
 
-    Matrix generateZeros(const int a, const int b) {
-        Matrix result(a, std::vector<double>(b));
-
-        for (size_t i = 0; i < a; i++) {
-            for (size_t j = 0; j < b; j++) {
-                result[i][j] = 0.0;
-            }
-        }
-
+    Matrix generateZeros(const int rows, const int cols) {
+        Matrix result(rows, std::vector<double>(cols, 0.0));
         return result;
     }
 
@@ -71,22 +64,28 @@ public:
 
     // Element wise addition
     Matrix add(const Matrix &a, const Matrix &b) {
-        if (a.size() != b.size() || a[0].size() != b[0].size()) {
+        if (a.size() != b.size()) {
             throw std::invalid_argument("Matrices not the same shape for addition");
         }
+
         // Generate array of zeros
-        Matrix result = generateZeros(a.size(), b[0].size());
+        Matrix result = generateZeros(a.size(), a[0].size());
 
         for (size_t i = 0; i < a.size(); i++) {
             for (size_t j = 0; j < a[0].size(); j++) {
-                result[i][j] = a[i][j] + b[i][j];
+                // Add broadcasting for weights and biases
+                if (b[0].size() == 1) {
+                    result[i][j] = a[i][j] + b[i][0];
+                } else {
+                    result[i][j] = a[i][j] + b[i][j];
+                }
             }
         }
         return result;
     }
 
     // Element wise subtraction
-    Matrix  subtract(const Matrix &a, const Matrix &b) {
+    Matrix subtract(const Matrix &a, const Matrix &b) {
         if (a.size() != b.size() || a[0].size() != b[0].size()) {
             throw std::invalid_argument("Matrices not the same shape for addition");
         }
@@ -224,6 +223,37 @@ public:
             for (size_t j = 0; j < cols; ++j) {
                 result[i][j] = randn();
             }
+        }
+        return result;
+    }
+
+    Matrix concatenate(Matrix& matrixToConcatenate, const Matrix& originalMatrix, const int rows, const int cols, const int n_a) {
+        //Check for different column size
+        if (matrixToConcatenate[0].size() != originalMatrix[0].size()) {
+            throw std::invalid_argument("Matrices do not have the same shape");
+        }
+
+        //Check for enough rows to fit new data
+        if (matrixToConcatenate.size() < n_a + rows) {
+            throw std::out_of_range("matrixToConcatenate does not have enough rows to fit the new data");
+        }
+
+        for (size_t i = 0; i < rows; i++) {
+            for (size_t j = 0; j < cols; j++) {
+                matrixToConcatenate[i][n_a + j] = originalMatrix[i][j];
+            }
+        }
+        return matrixToConcatenate;
+    }
+
+    Matrix sliceCols(const Matrix& m, const int start, const int end) {
+        if (start < 0 || end >= m[0].size() || start > end) {
+            throw std::invalid_argument("Slice out of range");
+        }
+
+        Matrix result;
+        for (size_t i = 0; i < m.size(); i++) {
+            result.push_back(std::vector<double>(m[i].begin()+start, m[i].begin()+end));
         }
         return result;
     }
