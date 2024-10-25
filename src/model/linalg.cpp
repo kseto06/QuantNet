@@ -5,18 +5,32 @@
 #include <random>
 #include <__random/random_device.h>
 
-class linalg {
+namespace linalg {
     typedef std::vector<std::vector<double>> Matrix;
+    typedef std::vector<std::vector<std::vector<double>>> Tensor3D;
 
-public:
     std::string shape(const Matrix &m) {
         return std::to_string(m.size()) + ", " +std::to_string(m[0].size());
     }
 
+    //Vector generate zeros:
+    std::vector<double> generateZeros(const int n) {
+        std::vector<double> zero_vector(n);
+        return zero_vector;
+    }
+
+    //@Overload: Matrix generate zeros
     Matrix generateZeros(const int rows, const int cols) {
         Matrix result(rows, std::vector<double>(cols, 0.0));
         return result;
     }
+
+    //@Overload: Tensor3D generate zeros
+    Tensor3D generateZeros(const int rows, const int cols, const int timesteps) {
+        Tensor3D result(rows, Matrix(cols, std::vector<double>(timesteps, 0.0)));
+        return result;
+    }
+
 
     //This function computes the dot product of two vectors, outputs scalar
     double dot(const std::vector <double> &a, const std::vector <double> &b) {

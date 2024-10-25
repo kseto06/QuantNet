@@ -1,9 +1,8 @@
 #include <vector>
 
-class activations {
+namespace activations {
     typedef std::vector<std::vector<double>> Matrix;
-    
-    public:
+
         //Apply linear activation to a matrix
         Matrix linear(const Matrix &m) {
             return m;
