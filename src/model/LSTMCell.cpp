@@ -1,5 +1,4 @@
 #include "linalg.cpp"
-#include "activations.cpp"
 #include <vector>
 #include <map>
 
@@ -72,6 +71,7 @@ class LSTMCell {
             auto params_tuple = std::make_tuple(a_next, c_next, a_prev, c_prev, forget_gate, update_gate, candidate, output_gate, x_t, params);
             return std::make_tuple(a_next, c_next, yt_pred, params_tuple);
         }
+
 
 
 };

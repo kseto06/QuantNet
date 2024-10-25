@@ -11,7 +11,7 @@ class LSTMNetwork {
     LSTMCell cell;
 
     public:
-        matrixDict initialize_parameters(const int n_input, const int n_hidden, const int n_output) {
+        matrixDict init_params(const int n_input, const int n_hidden, const int n_output) {
             //NOTE: n represents the columns / num of features in the data
             matrixDict params;
 
@@ -55,23 +55,24 @@ class LSTMNetwork {
             Matrix Wy = params["Wy"]; //Get the weight matrix for the prediction
 
             //Init shapes. NOTE: n_a, n_y might need to be reversed
-            const int m = x.size(), n_x = x[0].size(), timesteps = x[0][0].size(), n_y = Wy.size(), n_a = Wy[0].size();
+            const int m = x.size(), n_x = x[0][0].size(), timesteps = x[0].size(), n_y = Wy.size(), n_a = Wy[0].size();
 
             // Init states
-            Tensor3D hidden_state = linalg::generateZeros(m, n_a, timesteps);
-            Tensor3D candidate = linalg::generateZeros(m, n_a, timesteps);
-            Tensor3D prediction = linalg::generateZeros(m, n_y, timesteps);
+            Tensor3D hidden_state = linalg::generateZeros(m, timesteps, n_a);
+            Tensor3D candidate = linalg::generateZeros(m, timesteps, n_a);
+            Tensor3D prediction = linalg::generateZeros(m, timesteps, n_y);
 
             // Init matrices for hidden states at timesteps
             Matrix a_next = a_initial;
             Matrix c_next = linalg::generateZeros(m, n_a);
 
+            //Forward pass for every timestep
             for (size_t timestep = 0; timestep < timesteps; timestep++) {
                 // Slice the input data at the specific timestep:
                 Matrix x_t(m, std::vector<double>(n_x));
                 for (size_t i = 0; i < m; i++) {
                     for (size_t j = 0; j < n_x; j++) {
-                        x_t[i][j] = x[i][j][timestep];
+                        x_t[i][j] = x[i][timestep][j];
                     }
                 }
 
@@ -88,9 +89,9 @@ class LSTMNetwork {
                 //Matrix a_temp(m, std::vector<double>(n_x));
                 for (size_t i = 0; i < m; i++) {
                     for (size_t j = 0; j < n_x; j++) {
-                        hidden_state[i][j][timestep] = a_next[i][j];
-                        prediction[i][j][timestep] = y_t[i][j];
-                        candidate[i][j][timestep] = c_next[i][j];
+                        hidden_state[i][timestep][j] = a_next[i][j];
+                        prediction[i][timestep][j] = y_t[i][j];
+                        candidate[i][timestep][j] = c_next[i][j];
                     }
                 }
                 cache.push_back(cache_t);

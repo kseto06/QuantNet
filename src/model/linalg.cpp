@@ -26,8 +26,8 @@ namespace linalg {
     }
 
     //@Overload: Tensor3D generate zeros
-    Tensor3D generateZeros(const int rows, const int cols, const int timesteps) {
-        Tensor3D result(rows, Matrix(cols, std::vector<double>(timesteps, 0.0)));
+    Tensor3D generateZeros(const int rows, const int timesteps, const int cols) {
+        Tensor3D result(rows, Matrix(timesteps, std::vector<double>(cols, 0.0)));
         return result;
     }
 
