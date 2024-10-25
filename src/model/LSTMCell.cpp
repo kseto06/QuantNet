@@ -1,4 +1,5 @@
 #include "linalg.cpp"
+#include "activations.cpp"
 #include <vector>
 #include <map>
 
