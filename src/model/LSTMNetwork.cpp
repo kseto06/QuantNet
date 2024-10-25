@@ -41,13 +41,15 @@ class LSTMNetwork {
         }
 
         //Iterate through each cell at their respective timesteps
-        std::tuple< Matrix, Matrix, Matrix, std::tuple<Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, matrixDict> >
+        std::tuple<Tensor3D, Tensor3D, Tensor3D, std::tuple<std::vector<std::tuple<Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, matrixDict>>, Tensor3D>>
         lstm_forward(const Tensor3D& x, const Matrix& a_initial, matrixDict& params) {
             /* Inputs:
              * - x: input data, 3D Tensor of shape (num exs, num feats, timestep (days))
              * - a_initial: Initial hidden state
              * - parameters: map of weights and biases
              */
+
+            //NOTE: if hybrid with MLP, cache may not be empty.
             std::vector < std::tuple<Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, matrixDict> > cache;
 
             Matrix Wy = params["Wy"]; //Get the weight matrix for the prediction
@@ -94,7 +96,7 @@ class LSTMNetwork {
                 cache.push_back(cache_t);
             }
 
-
-
+            //Return cache and x-data for backprop
+            return std::make_tuple(hidden_state, prediction, candidate, std::make_tuple(cache, x));
         }
 };
