@@ -6,11 +6,8 @@
 class LSTMCell {
     typedef std::vector<std::vector<double>> Matrix;
     typedef std::map<std::string, Matrix> matrixDict;
-    
-    public:
-        linalg np;
-        activations act;
 
+    public:
         std::tuple< Matrix, Matrix, Matrix, std::tuple<Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, matrixDict> >
         lstm_cell_forward(const Matrix& x_t, const Matrix& a_prev, const Matrix& c_prev, matrixDict& params) {
             /* Inputs:
@@ -48,7 +45,7 @@ class LSTMCell {
             const int N_A = Wy.size(), N_Y = Wy[0].size(); //Batch size, input features
 
             //Concatenate activation/hidden state of the previous state and the current input x_t
-            Matrix concat = np.generateZeros(M, N_X+N_A);
+            Matrix concat = linalg::generateZeros(M, N_X+N_A);
             for (size_t i = 0; i < M; i++) {
                 for (size_t j = 0; j < N_A; j++) {
                     concat[i][j] = a_prev[i][j];
@@ -61,15 +58,15 @@ class LSTMCell {
             }
 
             //Compute the forward pass activations using LSTM formulas:
-            Matrix candidate = act.tanh(np.add(np.matmul(Wi, concat), Bc));
-            Matrix update_gate = act.sigmoid(np.add(np.matmul(concat, Wi), Bi));
-            Matrix forget_gate = act.sigmoid(np.add(np.matmul(concat, Wf), Bf));
-            Matrix output_gate = act.sigmoid(np.add(np.matmul(concat, Wo), Bo));
-            Matrix c_next = np.add(np.elementMultiply(update_gate, candidate), np.elementMultiply(forget_gate, c_prev));
-            Matrix a_next = np.elementMultiply(output_gate, act.tanh(c_next));
+            Matrix candidate = activations::tanh(linalg::add(linalg::matmul(Wi, concat), Bc));
+            Matrix update_gate = activations::sigmoid(linalg::add(linalg::matmul(Wi, concat), Bi));
+            Matrix forget_gate = activations::sigmoid(linalg::add(linalg::matmul(Wf, concat), Bf));
+            Matrix output_gate = activations::sigmoid(linalg::add(linalg::matmul(Wo, concat), Bo));
+            Matrix c_next = linalg::add(linalg::elementMultiply(update_gate, candidate), linalg::elementMultiply(forget_gate, c_prev));
+            Matrix a_next = linalg::elementMultiply(output_gate, activations::tanh(c_next));
 
             //Compute the prediction of the LSTM Cell:
-            Matrix yt_pred = act.linear(np.add(np.matmul(Wy, a_next), By));
+            Matrix yt_pred = activations::linear(linalg::add(linalg::matmul(Wy, a_next), By));
 
             //Return next cell parameters and cached values for backprop
             auto params_tuple = std::make_tuple(a_next, c_next, a_prev, c_prev, forget_gate, update_gate, candidate, output_gate, x_t, params);
