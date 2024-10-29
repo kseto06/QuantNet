@@ -15,7 +15,7 @@ namespace linalg {
 
     //Vector generate zeros:
     std::vector<double> generateZeros(const int n) {
-        std::vector<double> zero_vector(n);
+        std::vector<double> zero_vector(n, 0.0);
         return zero_vector;
     }
 
@@ -28,6 +28,24 @@ namespace linalg {
     //@Overload: Tensor3D generate zeros
     Tensor3D generateZeros(const int rows, const int timesteps, const int cols) {
         Tensor3D result(rows, Matrix(timesteps, std::vector<double>(cols, 0.0)));
+        return result;
+    }
+
+    //Vector generate ones:
+    std::vector<double> generateOnes(const int n) {
+        std::vector<double> one_vector(n, 1.0);
+        return one_vector;
+    }
+
+    //@Overload: Matrix generate ones
+    Matrix generateOnes(const int rows, const int cols) {
+        Matrix result(rows, std::vector<double>(cols, 1.0));
+        return result;
+    }
+
+    //@Overload: Tensor3D generate ones
+    Tensor3D generateOnes(const int rows, const int timesteps, const int cols) {
+        Tensor3D result(rows, Matrix(timesteps, std::vector<double>(cols, 1.0)));
         return result;
     }
 
@@ -186,7 +204,7 @@ namespace linalg {
 
         for (size_t i = 0; i < a.size(); i++) {
             for (size_t j = 0; j < a[0].size(); j++) {
-                result[i][j] == a[i][j] * b[i][j];
+                result[i][j] = a[i][j] * b[i][j];
             }
         }
         return result;
@@ -214,9 +232,10 @@ namespace linalg {
         return result;
     }
 
-    double randn() {
+    double randnum() {
+        constexpr int SEED = 42; //Seed can be changed for reproducibility
         static std::random_device rd;
-        static std::mt19937 gen(rd());
+        static std::mt19937 gen(SEED);
         static std::normal_distribution<double> distrib(0, 1);
         return distrib(gen);
     }
@@ -225,7 +244,7 @@ namespace linalg {
     std::vector<double> randn(const int n) {
         std::vector<double> result(n);
         for (int i = 0; i < n; i++) {
-            result[i] = randn();
+            result[i] = randnum();
         }
         return result;
     }
@@ -235,39 +254,8 @@ namespace linalg {
         Matrix result(rows, std::vector<double>(cols));
         for (size_t i = 0; i < rows; ++i) {
             for (size_t j = 0; j < cols; ++j) {
-                result[i][j] = randn();
+                result[i][j] = randnum();
             }
-        }
-        return result;
-    }
-
-    Matrix concatenate(Matrix& matrixToConcatenate, const Matrix& originalMatrix, const int rows, const int cols, const int n_a) {
-        //Check for different column size
-        if (matrixToConcatenate[0].size() != originalMatrix[0].size()) {
-            throw std::invalid_argument("Matrices do not have the same shape");
-        }
-
-        //Check for enough rows to fit new data
-        if (matrixToConcatenate.size() < n_a + rows) {
-            throw std::out_of_range("matrixToConcatenate does not have enough rows to fit the new data");
-        }
-
-        for (size_t i = 0; i < rows; i++) {
-            for (size_t j = 0; j < cols; j++) {
-                matrixToConcatenate[i][n_a + j] = originalMatrix[i][j];
-            }
-        }
-        return matrixToConcatenate;
-    }
-
-    Matrix sliceCols(const Matrix& m, const int start, const int end) {
-        if (start < 0 || end >= m[0].size() || start > end) {
-            throw std::invalid_argument("Slice out of range");
-        }
-
-        Matrix result;
-        for (size_t i = 0; i < m.size(); i++) {
-            result.push_back(std::vector<double>(m[i].begin()+start, m[i].begin()+end));
         }
         return result;
     }
