@@ -212,6 +212,21 @@ class LSTMCell {
                             linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wc"], 0, n_a)), dcc_t),
                             linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wo"], 0, n_a)), do_gate_t));
             Matrix dx_t = linalg::add(da_prev1, da_prev2);
+
+            gradientDict gradients;
+            gradients["dxt"] = dx_t;
+            gradients["da_prev"] = da_prev;
+            gradients["dc_prev"] = dc_prev;
+            gradients["dWf"] = dWf;
+            gradients["dbf"] = dbf;
+            gradients["dWi"] = dWi;
+            gradients["dbi"] = dbi;
+            gradients["dWc"] = dWc;
+            gradients["dbc"] = dbc;
+            gradients["dWo"] = dWo;
+            gradients["dbo"] = dbo;
+
+            return gradients;
         }
 
 };
