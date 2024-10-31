@@ -206,12 +206,12 @@ class LSTMCell {
                                 );
 
             Matrix dx_t1 = linalg::add(
-                            linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wf"], 0, n_a)), df_gate_t),
-                            linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wi"], 0, n_a)), du_gate_t));
+                            linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wf"], n_a, params["Wf"][0].size())), df_gate_t),
+                            linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wi"], n_a, params["Wi"][0].size())), du_gate_t));
             Matrix dx_t2 = linalg::add(
-                            linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wc"], 0, n_a)), dcc_t),
-                            linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wo"], 0, n_a)), do_gate_t));
-            Matrix dx_t = linalg::add(da_prev1, da_prev2);
+                            linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wc"], n_a, params["Wc"][0].size())), dcc_t),
+                            linalg::matmul(linalg::transpose(linalg::sliceCols(params["Wo"], n_a, params["Wo"][0].size())), do_gate_t));
+            Matrix dx_t = linalg::add(dx_t1, dx_t2);
 
             gradientDict gradients;
             gradients["dxt"] = dx_t;
