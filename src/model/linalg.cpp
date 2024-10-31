@@ -4,6 +4,7 @@
 #include <cmath>
 #include <random>
 #include <__random/random_device.h>
+#include "linalg.h"
 
 namespace linalg {
     typedef std::vector<std::vector<double>> Matrix;
@@ -11,6 +12,10 @@ namespace linalg {
 
     std::string shape(const Matrix &m) {
         return std::to_string(m.size()) + ", " +std::to_string(m[0].size());
+    }
+
+    std::string shapeTensor(const Tensor3D &m) {
+        return std::to_string(m.size()) + ", " + std::to_string(m[0].size()) + ", " + std::to_string(m[0][0].size());
     }
 
     //Vector generate zeros:
@@ -67,7 +72,7 @@ namespace linalg {
         return dotProduct;
     }
     //This function computes the matmul product of two matrices
-    Matrix &matmul(const Matrix &a, const Matrix &b) {
+    Matrix matmul(const Matrix &a, const Matrix &b) {
         /*
         Result[i][j]=
             v=0
@@ -81,16 +86,17 @@ namespace linalg {
         // Generate array of zeros
         Matrix product = generateZeros(a.size(), b[0].size());
 
+        // Matrix multiplication
         for (size_t i = 0; i < a.size(); i++) {
-            // Matrix multiplication:
             for (size_t j = 0; j < b[0].size(); j++) {
-                double sum = 0; //sum of each row
+                double sum = 0; // Sum of each row
                 for (size_t v = 0; v < a[i].size(); v++) {
                     sum += a[i][v] * b[v][j];
                 }
                 product[i][j] = sum; // Append the product
             }
         }
+
         return product;
     }
 
@@ -258,6 +264,65 @@ namespace linalg {
             }
         }
         return result;
+    }
+
+    Matrix sliceCols(const Matrix& mat, size_t start_col, size_t end_col) {
+        size_t rows = mat.size();
+        size_t cols = mat[0].size();
+
+        // Ensure end_col is within bounds, start_col < end_col
+        if (end_col > cols || start_col >= end_col) {
+            throw std::invalid_argument("Invalid column range for slicing.");
+        }
+
+        Matrix sliced(rows, std::vector<double>(end_col - start_col));
+
+        for (size_t i = 0; i < rows; i++) {
+            for (size_t j = start_col; j < end_col; j++) {
+                sliced[i][j - start_col] = mat[i][j];
+            }
+        }
+
+        return sliced;
+    }
+
+    // Function to print a vector
+    void printVector(const std::vector<double>& vec) {
+        std::cout << "[";
+        for (size_t i = 0; i < vec.size(); ++i) {
+            std::cout << vec[i];
+            if (i < vec.size() - 1) {
+                std::cout << ", ";
+            }
+        }
+        std::cout << "]" << std::endl;
+    }
+
+    // Function to print a matrix:
+    void printMatrix(const Matrix& mat) {
+        std::cout << "[";
+        for (int i = 0; i < mat.size(); i++) {
+            for (int j = 0; j < mat[0].size(); j++) {
+                std::cout << mat[i][j] << " ";
+            }
+            std::cout << "]" << std::endl;
+        }
+        std::cout << "]" << std::endl;
+    }
+
+    // Function to print a Tensor3D:
+    void printTensor3D(const Tensor3D& ten) {
+        std::cout << "[";
+        for (int i = 0; i < ten.size(); i++) {
+            for (int j = 0; j < ten[0].size(); j++) {
+                for (int k = 0; k < ten[0][0].size(); k++) {
+                    std::cout << ten[i][j][k] << " ";
+                }
+                std::cout << "]" << std::endl;
+            }
+            std::cout << "]" << std::endl;
+        }
+        std::cout << "]" << std::endl;
     }
 
 };
