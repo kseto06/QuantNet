@@ -1,12 +1,12 @@
 #include <vector>
 #include <map>
-#include "LSTMCell.cpp"
+#include "LSTMCell.h"
+#include "linalg.h"
 
-class LSTMNetwork {
+namespace LSTMNetwork {
     typedef std::vector<std::vector<double>> Matrix;
     typedef std::vector<std::vector<std::vector<double>>> Tensor3D;
     typedef std::map<std::string, Matrix> matrixDict;
-    LSTMCell cell;
 
     //Forward prop
     typedef std::tuple<Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, matrixDict> cacheTuple;
@@ -15,8 +15,7 @@ class LSTMNetwork {
     typedef std::variant<Matrix, Tensor3D> variantTensor;
     typedef std::map<std::string, variantTensor> gradientDict;
 
-    public:
-        matrixDict init_params(const int n_input, const int n_hidden, const int n_output) {
+    matrixDict init_params(const int n_input, const int n_hidden, const int n_output) {
             //NOTE: n represents the columns / num of features in the data
             matrixDict params;
 
@@ -45,9 +44,9 @@ class LSTMNetwork {
             return params;
         }
 
-        //Iterate through each cell at their respective timesteps
-        std::tuple<Tensor3D, Tensor3D, Tensor3D, std::tuple<std::vector<cacheTuple>, Tensor3D>>
-        lstm_forward(const Tensor3D& x, const Matrix& a_initial, matrixDict& params) {
+    //Iterate through each cell at their respective timesteps
+    std::tuple<Tensor3D, Tensor3D, Tensor3D, std::tuple<std::vector<cacheTuple>, Tensor3D>>
+    lstm_forward(const Tensor3D& x, const Matrix& a_initial, matrixDict& params) {
             /* Inputs:
              * - x: input data, 3D Tensor of shape (num exs, num feats, timestep (days))
              * - a_initial: Initial hidden state
@@ -83,7 +82,7 @@ class LSTMNetwork {
 
                 //Compute the matrices and parameters for the current timestep cell
                 std::tuple< Matrix, Matrix, Matrix, cacheTuple >
-                cell_state = cell.lstm_cell_forward(x_t, a_next, c_next, params);
+                cell_state = LSTMCell::lstm_cell_forward(x_t, a_next, c_next, params);
 
                 //Extract the values of the current timestep cell
                 a_next = std::get<0>(cell_state), c_next = std::get<1>(cell_state);
@@ -106,7 +105,7 @@ class LSTMNetwork {
             return std::make_tuple(hidden_state, prediction, candidate, std::make_tuple(cache, x));
         }
 
-        gradientDict lstm_backprop(Tensor3D da, std::tuple<std::vector<cacheTuple>, Tensor3D> fwd_prop_cache) {
+    gradientDict lstm_backprop(Tensor3D da, std::tuple<std::vector<cacheTuple>, Tensor3D> fwd_prop_cache) {
             std::vector<cacheTuple> cache = std::get<0>(fwd_prop_cache);
             Tensor3D x = std::get<1>(fwd_prop_cache); // Input
 
@@ -144,7 +143,7 @@ class LSTMNetwork {
                 cacheTuple cache_t = cache.at(timestep);
 
                 //Compute gradients for the current timestep cell
-                gradients = cell.lstm_cell_backward(linalg::add(da_t, da_prev_t), dc_prev_t, cache_t);
+                gradients = LSTMCell::lstm_cell_backward(linalg::add(da_t, da_prev_t), dc_prev_t, cache_t);
 
                 //Store the dx gradient
                 for (size_t i = 0; i < m; i++) {
@@ -177,7 +176,7 @@ class LSTMNetwork {
             gradients["dbc"] = dbc;
             gradients["dWo"] = dWo;
             gradients["dbo"] = dbo;
-            
+
             return gradients;
-        }
+    }
 };

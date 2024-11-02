@@ -1,4 +1,5 @@
 #include <vector>
+#include "activations.h"
 
 namespace activations {
     typedef std::vector<std::vector<double>> Matrix;
@@ -84,5 +85,7 @@ namespace activations {
                     result[i][j] = 1 - std::pow(std::tanh(m[i][j]), 2);
                 }
             }
+
+            return result;
         }
 };

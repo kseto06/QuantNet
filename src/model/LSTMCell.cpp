@@ -1,11 +1,11 @@
-#include "linalg.cpp"
-#include "activations.cpp"
+#include "linalg.h"
+#include "activations.h"
 #include <vector>
 #include <map>
 #include <variant>
 #include <valarray>
 
-class LSTMCell {
+namespace LSTMCell {
     typedef std::vector<std::vector<double>> Matrix;
     typedef std::vector<std::vector<std::vector<double>>> Tensor3D;
     typedef std::map<std::string, Matrix> matrixDict;
@@ -16,8 +16,7 @@ class LSTMCell {
     typedef std::variant<Matrix, Tensor3D> variantTensor;
     typedef std::map<std::string, variantTensor> gradientDict;
 
-    public:
-        forwardTuple lstm_cell_forward(const Matrix& x_t, const Matrix& a_prev, const Matrix& c_prev, matrixDict& params) {
+    forwardTuple lstm_cell_forward(const Matrix& x_t, const Matrix& a_prev, const Matrix& c_prev, matrixDict& params) {
             /* Inputs:
              * - x_t: current x-input timestep
              * - a_prev: hidden/activation state in the previous timestep
@@ -79,10 +78,10 @@ class LSTMCell {
             //Return next cell parameters and cached values for backprop
             auto params_tuple = std::make_tuple(a_next, c_next, a_prev, c_prev, forget_gate, update_gate, candidate, output_gate, x_t, params);
             return std::make_tuple(a_next, c_next, yt_pred, params_tuple);
-        }
+    }
 
-        //Compute back propagation for a single LSTM cell
-        gradientDict lstm_cell_backward(const Matrix& da_next, const Matrix& dc_next, const cacheTuple& cache) {
+    //Compute back propagation for a single LSTM cell
+    gradientDict lstm_cell_backward(const Matrix& da_next, const Matrix& dc_next, const cacheTuple& cache) {
             /* Inputs:
              * - da_next, gradients of next hidden state, Matrix (m, n_a)
              * - dc_next, gradients of next candidate/memory state, Matrix (m, n_a)
@@ -227,6 +226,6 @@ class LSTMCell {
             gradients["dbo"] = dbo;
 
             return gradients;
-        }
+    }
 
 };
