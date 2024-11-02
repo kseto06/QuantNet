@@ -1,5 +1,6 @@
 #include <vector>
 #include <map>
+#include "LSTMNetwork.h"
 #include "LSTMCell.h"
 #include "linalg.h"
 

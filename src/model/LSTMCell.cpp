@@ -1,5 +1,6 @@
 #include "linalg.h"
 #include "activations.h"
+#include "LSTMCell.h"
 #include <vector>
 #include <map>
 #include <variant>
