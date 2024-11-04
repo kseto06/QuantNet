@@ -286,6 +286,15 @@ namespace linalg {
         return sliced;
     }
 
+    //Reshape a (m, 1) Matrix --> (m) vector
+    std::vector<double> reshape(const Matrix& m) {
+        std::vector<double> vector(m.size());
+        for (size_t i = 0; i < m.size(); i++) {
+            vector.push_back(m[i][0]);
+        }
+        return vector;
+    }
+
     // Function to print a vector
     void printVector(const std::vector<double>& vec) {
         std::cout << "[";
