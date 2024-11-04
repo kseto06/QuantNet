@@ -19,7 +19,7 @@ namespace LSTMCell {
     typedef std::map<std::string, variantTensor> gradientDict;
 
     //Function declarations
-    forwardTuple lstm_cell_forward(const Matrix& x_t, const Matrix& a_prev, const Matrix& c_prev, matrixDict& params);
+    forwardTuple lstm_cell_forward(const Matrix& x_t, const Matrix& a_prev, const Matrix& c_prev, matrixDict& params, const int layer);
     gradientDict lstm_cell_backward(const Matrix& da_next, const Matrix& dc_next, const cacheTuple& cache);
 }
 

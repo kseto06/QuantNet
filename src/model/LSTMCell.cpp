@@ -16,8 +16,9 @@ namespace LSTMCell {
 
     typedef std::variant<Matrix, Tensor3D> variantTensor;
     typedef std::map<std::string, variantTensor> gradientDict;
+    typedef std::vector<cacheTuple> forwardCaches;
 
-    forwardTuple lstm_cell_forward(const Matrix& x_t, const Matrix& a_prev, const Matrix& c_prev, matrixDict& params) {
+    forwardTuple lstm_cell_forward(const Matrix& x_t, const Matrix& a_prev, const Matrix& c_prev, matrixDict& params, const int layer) {
             /* Inputs:
              * - x_t: current x-input timestep
              * - a_prev: hidden/activation state in the previous timestep
@@ -37,16 +38,16 @@ namespace LSTMCell {
              */
 
             // Get the parameters from params
-            Matrix Wf = params["Wf"]; //Forget gates
-            Matrix Bf = params["bf"];
-            Matrix Wi = params["Wi"]; //Update gates
-            Matrix Bi = params["Bi"];
-            Matrix Wc = params["Wc"]; //Candidate/memory gates
-            Matrix Bc = params["Bc"];
-            Matrix Wo = params["Wo"]; //Output gates
-            Matrix Bo = params["Bo"];
-            Matrix Wy = params["Wy"]; //Prediction weights
-            Matrix By = params["By"];
+            Matrix Wf = params["Wf"+std::to_string(layer)]; //Forget gates
+            Matrix Bf = params["bf"+std::to_string(layer)];
+            Matrix Wi = params["Wi"+std::to_string(layer)]; //Update gates
+            Matrix Bi = params["Bi"+std::to_string(layer)];
+            Matrix Wc = params["Wc"+std::to_string(layer)]; //Candidate/memory gates
+            Matrix Bc = params["Bc"+std::to_string(layer)];
+            Matrix Wo = params["Wo"+std::to_string(layer)]; //Output gates
+            Matrix Bo = params["Bo"+std::to_string(layer)];
+            Matrix Wy = params["Wy"+std::to_string(layer)]; //Prediction weights
+            Matrix By = params["By"+std::to_string(layer)];
 
             //Get the dimensions of shapes x_t, W_y
             const int M = x_t.size(), N_X = x_t[0].size(); //Num of exs, features at current timestep

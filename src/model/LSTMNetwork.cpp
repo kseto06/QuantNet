@@ -16,38 +16,38 @@ namespace LSTMNetwork {
     typedef std::variant<Matrix, Tensor3D> variantTensor;
     typedef std::map<std::string, variantTensor> gradientDict;
 
-    matrixDict init_params(const int n_input, const int n_hidden, const int n_output) {
+    matrixDict init_params(const int n_input, const int n_hidden, const int n_output, const int layer) {
             //NOTE: n represents the columns / num of features in the data
             matrixDict params;
 
             //Initialize parameters to have small values
             //NOTE: We might need to transpose all these values
             //Forget gate:
-            params["Wf"] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
-            params["bf"] = linalg::generateZeros(n_input, 1);
+            params["Wf"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
+            params["bf"+std::to_string(layer)] = linalg::generateZeros(n_input, 1);
 
             //Update (input) gate:
-            params["Wi"] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
-            params["bi"] = linalg::generateZeros(n_input, 1);
+            params["Wi"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
+            params["bi"+std::to_string(layer)] = linalg::generateZeros(n_input, 1);
 
             //Candidate/memory cells
-            params["Wc"] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
-            params["bc"] = linalg::generateZeros(n_input, 1);
+            params["Wc"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
+            params["bc"+std::to_string(layer)] = linalg::generateZeros(n_input, 1);
 
             //Output gate:
-            params["Wo"] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
-            params["bo"] = linalg::generateZeros(n_input, 1);
+            params["Wo"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
+            params["bo"+std::to_string(layer)] = linalg::generateZeros(n_input, 1);
 
             //Predictions
-            params["Wy"] = linalg::scalarMultiply(0.01, linalg::randn(n_output, n_hidden));
-            params["by"] = linalg::generateZeros(n_output, 1);
+            params["Wy"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_output, n_hidden));
+            params["by"+std::to_string(layer)] = linalg::generateZeros(n_output, 1);
 
             return params;
         }
 
     //Iterate through each cell at their respective timesteps
     std::tuple<Tensor3D, Tensor3D, Tensor3D, std::tuple<std::vector<cacheTuple>, Tensor3D>>
-    lstm_forward(const Tensor3D& x, const Matrix& a_initial, matrixDict& params) {
+    lstm_forward(const Tensor3D& x, const Matrix& a_initial, matrixDict& params, const int layer) {
             /* Inputs:
              * - x: input data, 3D Tensor of shape (num exs, num feats, timestep (days))
              * - a_initial: Initial hidden state
@@ -57,7 +57,7 @@ namespace LSTMNetwork {
             //NOTE: if hybrid with MLP, cache may not be empty.
             std::vector <cacheTuple> cache;
 
-            Matrix Wy = params["Wy"]; //Get the weight matrix for the prediction
+            Matrix Wy = params["Wy"+std::to_string(layer)]; //Get the weight matrix for the prediction
 
             //Init shapes. NOTE: n_a, n_y might need to be reversed
             const int m = x.size(), n_x = x[0][0].size(), timesteps = x[0].size(), n_y = Wy.size(), n_a = Wy[0].size();
@@ -83,7 +83,7 @@ namespace LSTMNetwork {
 
                 //Compute the matrices and parameters for the current timestep cell
                 std::tuple< Matrix, Matrix, Matrix, cacheTuple >
-                cell_state = LSTMCell::lstm_cell_forward(x_t, a_next, c_next, params);
+                cell_state = LSTMCell::lstm_cell_forward(x_t, a_next, c_next, params, layer);
 
                 //Extract the values of the current timestep cell
                 a_next = std::get<0>(cell_state), c_next = std::get<1>(cell_state);
@@ -106,7 +106,7 @@ namespace LSTMNetwork {
             return std::make_tuple(hidden_state, prediction, candidate, std::make_tuple(cache, x));
         }
 
-    gradientDict lstm_backprop(Tensor3D da, std::tuple<std::vector<cacheTuple>, Tensor3D> fwd_prop_cache) {
+    gradientDict lstm_backprop(Tensor3D da, std::tuple<std::vector<cacheTuple>, Tensor3D> fwd_prop_cache, const int layer) {
             std::vector<cacheTuple> cache = std::get<0>(fwd_prop_cache);
             Tensor3D x = std::get<1>(fwd_prop_cache); // Input
 
@@ -131,7 +131,7 @@ namespace LSTMNetwork {
             gradientDict gradients;
 
             //Backprop iteration through each timestep cell
-            for (size_t timestep = T_x; timestep > 0; timestep++) {
+            for (size_t timestep = T_x; timestep > 0; timestep--) {
                 //Compute gradients for each timestep cell
                 //Slice the activation data:
                 Matrix da_t(m, std::vector<double>(n_a));
@@ -149,34 +149,34 @@ namespace LSTMNetwork {
                 //Store the dx gradient
                 for (size_t i = 0; i < m; i++) {
                     for (size_t j = 0; j < n_x; j++) {
-                        dx[i][timestep][j] = std::get<Matrix>(gradients["dxt"])[i][j];
+                        dx[i][timestep][j] = std::get<Matrix>(gradients["dxt"+std::to_string(layer)])[i][j];
                     }
                 }
 
                 //Add the gradient to the parameter's previous timestep gradients
-                dWf = linalg::add(std::get<Matrix>(gradients["dWf"]), dWf);
-                dWi = linalg::add(std::get<Matrix>(gradients["dWi"]), dWi);
-                dWc = linalg::add(std::get<Matrix>(gradients["dWc"]), dWc);
-                dWo = linalg::add(std::get<Matrix>(gradients["dWo"]), dWo);
-                dbf = linalg::add(std::get<Matrix>(gradients["dbf"]), dbf);
-                dbi = linalg::add(std::get<Matrix>(gradients["dbi"]), dbi);
-                dbc = linalg::add(std::get<Matrix>(gradients["dbc"]), dbc);
-                dbo = linalg::add(std::get<Matrix>(gradients["dbo"]), dbo);
+                dWf = linalg::add(std::get<Matrix>(gradients["dWf"+std::to_string(layer)]), dWf);
+                dWi = linalg::add(std::get<Matrix>(gradients["dWi"+std::to_string(layer)]), dWi);
+                dWc = linalg::add(std::get<Matrix>(gradients["dWc"+std::to_string(layer)]), dWc);
+                dWo = linalg::add(std::get<Matrix>(gradients["dWo"+std::to_string(layer)]), dWo);
+                dbf = linalg::add(std::get<Matrix>(gradients["dbf"+std::to_string(layer)]), dbf);
+                dbi = linalg::add(std::get<Matrix>(gradients["dbi"+std::to_string(layer)]), dbi);
+                dbc = linalg::add(std::get<Matrix>(gradients["dbc"+std::to_string(layer)]), dbc);
+                dbo = linalg::add(std::get<Matrix>(gradients["dbo"+std::to_string(layer)]), dbo);
             }
 
             // Set the first activation's gradient to backpropagated da_prev gradient
-            da_initial = std::get<Matrix>(gradients["da_prev"]);
+            da_initial = std::get<Matrix>(gradients["da_prev"+std::to_string(layer)]);
 
-            gradients["dx"] = dx;
-            gradients["da0"] = da_initial;
-            gradients["dWf"] = dWf;
-            gradients["dbf"] = dbf;
-            gradients["dWi"] = dWi;
-            gradients["dbi"] = dbi;
-            gradients["dWc"] = dWc;
-            gradients["dbc"] = dbc;
-            gradients["dWo"] = dWo;
-            gradients["dbo"] = dbo;
+            gradients["dx"+std::to_string(layer)] = dx;
+            gradients["da0"+std::to_string(layer)] = da_initial;
+            gradients["dWf"+std::to_string(layer)] = dWf;
+            gradients["dbf"+std::to_string(layer)] = dbf;
+            gradients["dWi"+std::to_string(layer)] = dWi;
+            gradients["dbi"+std::to_string(layer)] = dbi;
+            gradients["dWc"+std::to_string(layer)] = dWc;
+            gradients["dbc"+std::to_string(layer)] = dbc;
+            gradients["dWo"+std::to_string(layer)] = dWo;
+            gradients["dbo"+std::to_string(layer)] = dbo;
 
             return gradients;
     }
