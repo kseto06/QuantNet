@@ -55,7 +55,7 @@ namespace LSTMNetwork {
              */
 
             //NOTE: if hybrid with MLP, cache may not be empty.
-            std::vector <cacheTuple> cache;
+            std::vector<cacheTuple> cache;
 
             Matrix Wy = params["Wy"+std::to_string(layer)]; //Get the weight matrix for the prediction
 

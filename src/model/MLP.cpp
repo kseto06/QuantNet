@@ -8,7 +8,9 @@
 
 namespace MLP {
     typedef std::vector<std::vector<double>> Matrix;
-    typedef std::map<std::string, Matrix> matrixDict;
+    typedef std::map<std::string, Matrix> matrixDict; //Forward cache for mlp
+    typedef std::tuple<Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, matrixDict> cacheTuple; //forward cache for lstm
+
 
     // Use W_y, a_next, b_y as Dense's weights, hidden state (a), biases
     Matrix he_normalization(const int rows, const int cols) {

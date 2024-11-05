@@ -4,7 +4,6 @@
 #include <vector>
 #include <map>
 #include <variant>
-#include <valarray>
 
 namespace LSTMCell {
     typedef std::vector<std::vector<double>> Matrix;
