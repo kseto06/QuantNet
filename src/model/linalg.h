@@ -35,12 +35,14 @@ namespace linalg {
     Matrix scalarMultiply(const double scalar, const Matrix &m);
     Matrix elementMultiply(const Matrix &a, const Matrix &b);
     Matrix division(const Matrix &a, const Matrix &b);
+    Matrix division(const Matrix& a, const int s);
 
     double randnum();
     std::vector<double> randn(const int n);
     Matrix randn(const int rows, const int cols);
     Matrix sliceCols(const Matrix& mat, size_t start_col, size_t end_col);
     std::vector<double> reshape(const Matrix& m);
+    Matrix reshape(const std::vector<double> v);
 
     void printVector(const std::vector<double>& vec);
     void printMatrix(const Matrix& mat);

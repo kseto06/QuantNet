@@ -238,8 +238,25 @@ namespace linalg {
         return result;
     }
 
+    //Element-wise division of a matrix by a scalar
+    Matrix division(const Matrix &a, const int s) {
+        Matrix result(a.size(), std::vector<double>(a[0].size(), 0.0));
+
+        //Prevent division by zero
+        if (s == 0) {
+            return a;
+        }
+
+        for (size_t i = 0; i < a.size(); i++) {
+            for (size_t j = 0; j < a[0].size(); j++) {
+                result[i][j] = a[i][j] / s;
+            }
+        }
+        return result;
+    }
+
     double randnum() {
-        constexpr int SEED = 42; //Seed can be changed for reproducibility
+        constexpr int SEED = 0; //Seed can be changed for reproducibility
         static std::random_device rd;
         static std::mt19937 gen(SEED);
         static std::normal_distribution<double> distrib(0, 1);
@@ -295,6 +312,18 @@ namespace linalg {
         return vector;
     }
 
+    //Reshape a (m) vector --> (m, 1) Matrix
+    Matrix reshape(const std::vector<double>& v) {
+        const int m = v.size();
+        Matrix matrix(m, std::vector<double>(1));
+
+        for (size_t i = 0; i < m; i++) {
+            matrix[i][0] = v[i];
+        }
+
+        return matrix;
+    }
+
     // Function to print a vector
     void printVector(const std::vector<double>& vec) {
         std::cout << "[";
@@ -333,5 +362,4 @@ namespace linalg {
         }
         std::cout << "]" << std::endl;
     }
-
 };
