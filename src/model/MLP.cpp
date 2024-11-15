@@ -8,9 +8,7 @@
 
 namespace MLP {
     typedef std::vector<std::vector<double>> Matrix;
-    typedef std::map<std::string, Matrix> matrixDict; //Forward cache for mlp
-    typedef std::tuple<Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, matrixDict> cacheTuple; //forward cache for lstm
-
+    typedef std::map<std::string, Matrix> matrixDict; //Forward cache and gradients for mlp
 
     // Use W_y, a_next, b_y as Dense's weights, hidden state (a), biases
     Matrix he_normalization(const int rows, const int cols) {
@@ -64,4 +62,28 @@ namespace MLP {
 
         return std::make_tuple(a_out, cache);
     }
+
+    //Backprop one step (MLP)
+    matrixDict mlp_backward(Matrix a_in, Matrix dA, Matrix targets, matrixDict mlp_cache, const int layer, const std::function<Matrix(Matrix)>& prime_activation) {
+        //Z derivative
+        const Matrix dZ = linalg::elementMultiply(dA, prime_activation(mlp_cache["Z"+std::to_string(layer)]));
+
+        //(W)eight derivative
+        const Matrix dW = (layer > 1) ? linalg::matmul(dZ, mlp_cache["A"+std::to_string(layer)]) : linalg::matmul(dZ, a_in); //Use the original input for the last layer
+
+        // Update B and A gradients
+        const Matrix dB = linalg::sum(dZ, 1); //Sum over dZ's columns
+        const Matrix dA_prev = linalg::matmul(mlp_cache["W"+std::to_string(layer)], dZ);
+
+        // Storing gradients to return:
+        matrixDict gradients;
+        gradients["dZ"+std::to_string(layer)] = dZ;
+        gradients["dW"+std::to_string(layer)] = dW;
+        gradients["db"+std::to_string(layer)] = dB;
+        gradients["dA"+std::to_string(layer)] = dA_prev;
+
+        return gradients;
+    }
+
+
 }
