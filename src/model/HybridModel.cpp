@@ -168,6 +168,13 @@ namespace HybridModel {
     }
 
     void forward_prop() {
+        /*
+        NOTE: Right now, function assumes that the first inputs are LSTMs and last inputs are MLP.
+              - e.g: Relu->Relu->LSTM->LSTM is not supported, because LSTMs are placed last
+              - e.g: LSTM->LSTM->Relu->Linear is supported, because LSTMs are placed before MLP in the network
+              Architectures that are "mixed" is not supported
+              - e.g: LSTM->Relu->LSTM->Linear
+         */
         Matrix Wy = layer_params[0]["Wy1"];
         int n_a = Wy[0].size();
 
@@ -182,14 +189,13 @@ namespace HybridModel {
         for (int i = 1; i <= layer_types.size(); i++) {
             if (layer_types[i] == "LSTM") {
                 if (i == 1) {
+                    //Initialize parameters in the function and forward prop through the network once
                     LSTMCache current_lstm_tuple = LSTMNetwork::lstm_forward(std::get<Tensor3D>(x_train), a_initial, layer_params[i], i);
-                    //lstm_forward returns: std::make_tuple(hidden_state, prediction, candidate, std::make_tuple(cache, x));
                     new_x_state = std::get<1>(std::get<3>(current_lstm_tuple));
                     new_hidden_state = std::get<0>(current_lstm_tuple);
                     cache.cache.push_back(current_lstm_tuple);
                 } else {
                     LSTMCache current_lstm_tuple = LSTMNetwork::lstm_forward(new_x_state, reshape_last_timestep(new_hidden_state), layer_params[i], i);
-                    //lstm_forward returns: std::make_tuple(hidden_state, prediction, candidate, std::make_tuple(cache, x));
                     new_x_state = std::get<1>(std::get<3>(current_lstm_tuple));
                     new_hidden_state = std::get<0>(current_lstm_tuple);
                     cache.cache.push_back(current_lstm_tuple);
