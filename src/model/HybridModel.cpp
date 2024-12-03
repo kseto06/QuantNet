@@ -22,10 +22,18 @@ namespace HybridModel {
     typedef std::tuple<Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, Matrix, matrixDict> cacheTuple;
     typedef std::tuple<Tensor3D, Tensor3D, Tensor3D, std::tuple<std::vector<cacheTuple>, Tensor3D>> LSTMCache;
 
+    //Backprop
+    //Variant since it can be either a Tensor3D gradient with timesteps or Matrix gradients
+    typedef std::map<std::string, variantTensor> gradientDict;
+
     //Unified cache structure
     struct UnifiedCache {
-        MLPCache mlpCache;
-        std::vector<LSTMCache> lstmCache;
+        std::vector<std::variant<LSTMCache, matrixDict>> cache;
+    };
+
+    //Unified gradient structure
+    struct UnifiedGradients {
+        std::vector<std::variant<gradientDict, matrixDict>> grads;
     };
 
     //Anonymous namespace for private variables
@@ -46,6 +54,9 @@ namespace HybridModel {
         variantTensor x_train;
         Matrix y_train = {{}}; //shape (m,1)
         constexpr int BATCH_SIZE = 64;
+
+        //Backprop variables
+        UnifiedGradients grads;
     }
 
     // Minibatch generation
@@ -99,7 +110,7 @@ namespace HybridModel {
         for (size_t i = 0; i < pred.size(); i++) {
             loss += std::pow(pred[i] - target[i], 2);
         }
-        return loss/pred.size();
+        return loss/(2*pred.size());
     }
 
     //Layer types and dimensions (setters)
@@ -130,9 +141,30 @@ namespace HybridModel {
 
         // Extract the last timestep for each example in the batch
         for (int i = 0; i < batch_size; ++i) {
-            reshaped_matrix[i] = hidden_state[i].back();  // last timestep
+            if (hidden_state[i].empty()) {
+                throw std::invalid_argument("Hidden state is empty");
+            }
+
+            reshaped_matrix[i] = hidden_state[i].back();  // return the last timestep in the sequence
         }
         return reshaped_matrix;
+    }
+
+    //Matrix --> Tensor3D conversion with number of timesteps initialized in x_train
+    Tensor3D reshape_last_timestep(const Matrix& hidden_state) {
+        int batch_size = hidden_state.size();
+        int hidden_units = hidden_state[0].size();
+        const int TIMESTEPS = std::get<Tensor3D>(x_train)[0].size();
+        Tensor3D reshaped_tensor(batch_size, Matrix(TIMESTEPS, std::vector<double>(hidden_units, 0.0)));
+
+        // Reshape:
+        for (int i = 0; i < batch_size; i++) {
+            for (int t = 0; t < TIMESTEPS; t++) {
+                reshaped_tensor[i][t] = hidden_state[i];
+            }
+        }
+
+        return reshaped_tensor;
     }
 
     void forward_prop() {
@@ -154,13 +186,13 @@ namespace HybridModel {
                     //lstm_forward returns: std::make_tuple(hidden_state, prediction, candidate, std::make_tuple(cache, x));
                     new_x_state = std::get<1>(std::get<3>(current_lstm_tuple));
                     new_hidden_state = std::get<0>(current_lstm_tuple);
-                    cache.lstmCache.push_back(current_lstm_tuple);
+                    cache.cache.push_back(current_lstm_tuple);
                 } else {
                     LSTMCache current_lstm_tuple = LSTMNetwork::lstm_forward(new_x_state, reshape_last_timestep(new_hidden_state), layer_params[i], i);
                     //lstm_forward returns: std::make_tuple(hidden_state, prediction, candidate, std::make_tuple(cache, x));
                     new_x_state = std::get<1>(std::get<3>(current_lstm_tuple));
                     new_hidden_state = std::get<0>(current_lstm_tuple);
-                    cache.lstmCache.push_back(current_lstm_tuple);
+                    cache.cache.push_back(current_lstm_tuple);
                 }
             } else if (layer_types[i] == "Relu") {
                 // Reshape a_out using the last timestepped hidden state from LSTM_forward
@@ -170,15 +202,15 @@ namespace HybridModel {
 
                 if (i == 1) {
                     //Input x is a Matrix
-                    std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(std::get<Matrix>(x_train), layer_params[i], activations::relu, i, cache.mlpCache[i]);
+                    std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(std::get<Matrix>(x_train), layer_params[i], activations::relu, i, std::get<matrixDict>(cache.cache[i]));
                     a_out = std::get<0>(current_dense_tuple);
                     matrixDict current_mlp_cache = std::get<1>(current_dense_tuple);
-                    cache.mlpCache.push_back(current_mlp_cache);
+                    cache.cache.push_back(current_mlp_cache);
                 } else {
-                    std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(a_out, layer_params[i], activations::relu, i, cache.mlpCache[i]);
+                    std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(a_out, layer_params[i], activations::relu, i, std::get<matrixDict>(cache.cache[i]));
                     a_out = std::get<0>(current_dense_tuple);
                     matrixDict current_mlp_cache = std::get<1>(current_dense_tuple);
-                    cache.mlpCache.push_back(current_mlp_cache);
+                    cache.cache.push_back(current_mlp_cache);
                 }
             } else if (layer_types[i] == "Linear") {
                 // Reshape a_out using the last timestepped hidden state from LSTM_forward
@@ -186,10 +218,10 @@ namespace HybridModel {
                     a_out = reshape_last_timestep(new_hidden_state);
                 }
 
-                std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(a_out, layer_params[i], activations::linear, i, cache.mlpCache[i]);
+                std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(a_out, layer_params[i], activations::linear, i, std::get<matrixDict>(cache.cache[i]));
                 a_out = std::get<0>(current_dense_tuple);
                 matrixDict current_mlp_cache = std::get<1>(current_dense_tuple);
-                cache.mlpCache.push_back(current_mlp_cache);
+                cache.cache.push_back(current_mlp_cache);
             }
         }
         //Set the final prediction matrix
@@ -205,6 +237,70 @@ namespace HybridModel {
     }
 
     void back_prop() {
-        //TO-DO
+        gradientDict gradients;
+        constexpr int L = layer_types.size(); //num of layers
+        constexpr int m = std::get<Tensor3D>(x_train).size();
+        Matrix a_in_matrix = reshape_last_timestep(std::get<Tensor3D>(x_train));
+
+        // Derivatives
+        Matrix dA_matrix;
+        if (std::holds_alternative<matrixDict>(cache.cache[L])) {
+            //Access the cache at L
+            matrixDict& layer_cache = std::get<matrixDict>(cache.cache[L]);
+
+            // Check if the key exists
+            auto item = layer_cache.find("A"+std::to_string(L));
+            if (item != layer_cache.end()) {
+                dA_matrix = item -> second;
+            }
+
+            dA_matrix = linalg::division(linalg::subtract(dA_matrix, y_train), m); //Init gradient for the last layer (derivative of loss function)
+        }
+        Tensor3D dA_tensor; //To store reshaped LSTM gradients
+
+        for (int layer = L; layer >= 1; layer--) {
+            if (layer_types[layer] == "LSTM") {
+                if (layer == L) {
+                    continue; //Skip, assume last layer is always a linear/MLP output
+                }
+
+                //Reshape from Matrix to Tensor3D if last backpropagated layer wasn't LSTM with Tensor3D
+                if (layer_types[layer-1] == "Relu" || layer_types[layer-1] == "Linear") {
+                    dA_tensor = reshape_last_timestep(dA_matrix);
+                }
+
+                if (std::holds_alternative<LSTMCache>(cache.cache[layer])) { //Check for correct type
+                    //Get the current LSTM cache
+                    LSTMCache lstm_cache = std::get<LSTMCache>(cache.cache[layer]);
+                    gradientDict current_lstm_grads = LSTMNetwork::lstm_backprop(dA_tensor, std::tuple<std::vector<LSTMNetwork::cacheTuple>, LSTMNetwork::Tensor3D>(
+                        std::make_tuple<lstm_cache, std::get<Tensor3D>(x_train)>), layer);
+
+                    // Update the new activation derivative
+                    dA_tensor = std::get<Tensor3D>(current_lstm_grads["da0"+std::to_string(layer)]);
+
+                    //Store gradients
+                    grads.grads.push_back(current_lstm_grads);
+                }
+
+            } else if (layer_types[layer] == "Relu" || layer_types[layer] == "Linear") {
+                if (layer == L) {
+                    continue;
+                }
+                // Reshape dA to a matrix using the last timestepped hidden state from LSTM gradients
+                if (layer_types[layer-1] == "LSTM") {
+                    dA_matrix = reshape_last_timestep(dA_tensor);
+                }
+
+                //Compute gradients
+                matrixDict current_mlp_grads = MLP::mlp_backward(
+                    a_in_matrix, dA_matrix, y_train,
+                    std::get<matrixDict>(cache.cache[layer]), layer,
+                    (layer_types[layer] == "Relu") ? activations::relu : activations::linear); //Ternary operator between Relu and Linear
+
+                //Store gradients
+                grads.grads.push_back(current_mlp_grads);
+            }
+        }
+
     }
 }
