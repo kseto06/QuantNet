@@ -59,6 +59,8 @@ namespace HybridModel {
         UnifiedGradients grads;
     }
 
+
+
     // Minibatch generation
     std::vector<minibatch> generate_minibatches(Tensor3D X, Matrix Y, int batch_size, int seed) {
         size_t m = X.size();
@@ -113,21 +115,37 @@ namespace HybridModel {
         return loss/(2*pred.size());
     }
 
+    //Inputting X and Y datasets:
+    void init_data(const variantTensor& X, const Matrix& Y) {
+        x_train = X;
+        y_train = Y;
+    }
+
     //Layer types and dimensions (setters)
     void init_layers(const std::vector<std::string>& layer_type, const std::vector<int>& layer_dim) {
         layer_types = layer_type;
         layer_dims = layer_dim;
     }
 
-    //LSTM Network initialization
+    //LSTM/MLP Network initialization
     void initialize_network() {
         //NOTE: layer_type and layer_dims should have the same shape
         for (int i = 1; i <= layer_types.size(); i++) {
             matrixDict current_params;
-            if (layer_types[i] == "LSTM") {
-                current_params = LSTMNetwork::init_params(BATCH_SIZE, std::get<Tensor3D>(x_train)[0].size(), layer_dims[i], i); //Output matches the input shape?
-            } else if (layer_types[i] == "Relu" || layer_types[i] == "Linear") {
+            std::cout << "Layer " << i << ": " << layer_types[i-1] << std::endl;
+
+            if (layer_types[i-1] == "LSTM") {
+                if (std::holds_alternative<Tensor3D>(x_train)) {
+                    Tensor3D x = std::get<Tensor3D>(x_train);
+                    current_params = LSTMNetwork::init_params(BATCH_SIZE, x[0].size(), layer_dims[i-1], i);
+                    std::cout << "LSTM init successful" << std::endl;
+                } else {
+                    std::cout << "Requires Tensor3D input for init" << std::endl;
+                    linalg::printMatrix(std::get<Matrix>(x_train));
+                }
+            } else if (layer_types[i-1] == "Relu" || layer_types[i-1] == "Linear") {
                 current_params = MLP::init_mlp_params(layer_dims, i);
+                std::cout << "MLP init successful" << std::endl;
             }
             layer_params.push_back(current_params);
         }
@@ -244,8 +262,8 @@ namespace HybridModel {
 
     void back_prop() {
         gradientDict gradients;
-        constexpr int L = layer_types.size(); //num of layers
-        constexpr int m = std::get<Tensor3D>(x_train).size();
+        const int L = layer_types.size(); //num of layers
+        const int m = std::get<Tensor3D>(x_train).size();
         Matrix a_in_matrix = reshape_last_timestep(std::get<Tensor3D>(x_train));
 
         // Derivatives
@@ -278,8 +296,14 @@ namespace HybridModel {
                 if (std::holds_alternative<LSTMCache>(cache.cache[layer])) { //Check for correct type
                     //Get the current LSTM cache
                     LSTMCache lstm_cache = std::get<LSTMCache>(cache.cache[layer]);
-                    gradientDict current_lstm_grads = LSTMNetwork::lstm_backprop(dA_tensor, std::tuple<std::vector<LSTMNetwork::cacheTuple>, LSTMNetwork::Tensor3D>(
-                        std::make_tuple<lstm_cache, std::get<Tensor3D>(x_train)>), layer);
+                    gradientDict current_lstm_grads = LSTMNetwork::lstm_backprop(
+                        dA_tensor,
+                        std::make_tuple(
+                            std::get<0>(std::get<3>(lstm_cache)),  // Extracts the vector<cacheTuple>
+                            std::get<1>(std::get<3>(lstm_cache))   // Extracts the Tensor3D
+                        ),
+                        layer
+                    );
 
                     // Update the new activation derivative
                     dA_tensor = std::get<Tensor3D>(current_lstm_grads["da0"+std::to_string(layer)]);
@@ -307,6 +331,13 @@ namespace HybridModel {
                 grads.grads.push_back(current_mlp_grads);
             }
         }
+    }
+
+    void init_Adam() {
+
+    }
+
+    void optimize() {
 
     }
 }

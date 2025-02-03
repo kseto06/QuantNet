@@ -10,6 +10,7 @@ namespace HybridModel {
 
     std::vector<minibatch> generate_minibatches(Tensor3D X, Matrix Y, int batch_size, int seed);
     double MSE(const std::vector<double>& pred, const std::vector<double>& target);
+    void init_data(const std::variant<Matrix, Tensor3D>& X, const Matrix& Y);
     void init_layers(const std::vector<std::string>& layer_type, const std::vector<int>& layer_dim);
     void initialize_network();
     Matrix reshape_last_timestep(const Tensor3D& hidden_state);
@@ -17,7 +18,5 @@ namespace HybridModel {
     void loss();
     void back_prop();
 }
-
-
 
 #endif //HYBRIDMODEL_H

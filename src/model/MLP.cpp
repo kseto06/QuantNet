@@ -23,6 +23,8 @@ namespace MLP {
                 result[i][j] = distrib(gen); //Random values for He
              }
         }
+
+        return result;
     }
 
     matrixDict init_mlp_params(const std::vector<int>& layer_dimensions, const int layer) {
@@ -34,10 +36,16 @@ namespace MLP {
         params -- dictionary of params (W1, b1, W2, b2, ...)
         */
         //np.random.seed(3)
+
+        /* Init params as a dict/map: */
         std::map<std::string, Matrix> params;
 
+        /* Init the weight matrix of the current MLP layer */
+        //std::cout << "He Normalizing:" << std::endl;
         params["W"+std::to_string(layer)] = he_normalization(layer_dimensions[layer], layer_dimensions[layer-1]);
-        // Bias matrix. Generates a matrix of shape[num units in current layer, 1 value]
+        // std::cout << "MLP Weights initialized successfully" << std::endl;
+
+        /* Init the bias matrix of the current bias layer. Generates a matrix of shape[num units in current layer, 1 value] */
         params["b"+std::to_string(layer)] = linalg::generateZeros(layer_dimensions[layer], 1);
 
         return params;
@@ -69,7 +77,7 @@ namespace MLP {
         const Matrix dZ = linalg::elementMultiply(dA, prime_activation(mlp_cache["Z"+std::to_string(layer)]));
 
         //(W)eight derivative
-        const Matrix dW = (layer > 1) ? linalg::matmul(dZ, mlp_cache["A"+std::to_string(layer)]) : linalg::matmul(dZ, a_in); //Use the original input for the last layer
+        const Matrix dW = (layer == 1) ? linalg::matmul(dZ, mlp_cache["A"+std::to_string(layer)]) : linalg::matmul(dZ, a_in); //Use the original input for the last layer
 
         // Update B and A gradients
         const Matrix dB = linalg::sum(dZ, 1); //Sum over dZ's columns
