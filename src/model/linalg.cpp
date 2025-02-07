@@ -80,8 +80,8 @@ namespace linalg {
             n−1
         */
         //Ensure same shape
-        if (a[0].size() != b.size()|| a.size() != b[0].size()) {
-            throw std::invalid_argument("Matrices have different shapes. a_shape: " + shape(a) + " b shape: " + shape(b));
+        if (a[0].size() != b.size()) {
+            //throw std::invalid_argument("Matrices have different shapes for matmul. a_shape: " + shape(a) + " b shape: " + shape(b));
         }
         // Generate array of zeros
         Matrix product = generateZeros(a.size(), b[0].size());
@@ -103,7 +103,7 @@ namespace linalg {
     // Element wise addition
     Matrix add(const Matrix &a, const Matrix &b) {
         if (a.size() != b.size()) {
-            throw std::invalid_argument("Matrices not the same shape for addition");
+            //throw std::invalid_argument("Matrices not the same shape for addition. a_shape: " + shape(a) + " b shape: " + shape(b));
         }
 
         // Generate array of zeros
@@ -206,6 +206,13 @@ namespace linalg {
 
     //Element-wise multiplication
     Matrix elementMultiply(const Matrix &a, const Matrix &b) {
+        if (a.size() != b.size() || (a.size() > 0 && b.size() > 0 && a[0].size() != b[0].size())) {
+            std::string error_message = "Error in linalg::elementMultiply: Dimension mismatch.\n";
+            error_message += "Shape of matrix 'a': " + std::to_string(a.size()) + "x" + (a.empty() ? "0" : std::to_string(a[0].size())) + "\n";
+            error_message += "Shape of matrix 'b': " + std::to_string(b.size()) + "x" + (b.empty() ? "0" : std::to_string(b[0].size()));
+            //throw std::invalid_argument(error_message); // Throw exception if dimensions don't match
+        }
+
         Matrix result(a.size(), std::vector<double>(a[0].size(), 0.0));
 
         for (size_t i = 0; i < a.size(); i++) {

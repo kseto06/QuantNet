@@ -40,17 +40,30 @@ namespace LSTMCell {
             Matrix Wf = params["Wf"+std::to_string(layer)]; //Forget gates
             Matrix Bf = params["bf"+std::to_string(layer)];
             Matrix Wi = params["Wi"+std::to_string(layer)]; //Update gates
-            Matrix Bi = params["Bi"+std::to_string(layer)];
+            Matrix Bi = params["bi"+std::to_string(layer)];
             Matrix Wc = params["Wc"+std::to_string(layer)]; //Candidate/memory gates
-            Matrix Bc = params["Bc"+std::to_string(layer)];
+            Matrix Bc = params["bc"+std::to_string(layer)];
             Matrix Wo = params["Wo"+std::to_string(layer)]; //Output gates
-            Matrix Bo = params["Bo"+std::to_string(layer)];
+            Matrix Bo = params["bo"+std::to_string(layer)];
             Matrix Wy = params["Wy"+std::to_string(layer)]; //Prediction weights
-            Matrix By = params["By"+std::to_string(layer)];
+            Matrix By = params["by"+std::to_string(layer)];
 
             //Get the dimensions of shapes x_t, W_y
             const int M = x_t.size(), N_X = x_t[0].size(); //Num of exs, features at current timestep
             const int N_A = Wy[0].size(), N_Y = Wy.size(); //Num of hidden states, num of outputs
+
+            // std::cout << " DEBUG - Checking shapes in LSTMCell Forward" << std::endl;
+            // std::cout << "  Shape of x_t: " << linalg::shape(x_t) << std::endl;
+            // std::cout << "  Shape of a_prev: " << linalg::shape(a_prev) << std::endl;
+            // std::cout << "  Shape of c_prev (input): " << linalg::shape(c_prev) << std::endl;
+            // std::cout << "  Shape of Wf: " << linalg::shape(Wf) << std::endl;
+            // std::cout << "  Shape of Bf: " << linalg::shape(Bf) << std::endl;
+            // std::cout << "  Shape of Wi: " << linalg::shape(Wi) << std::endl;
+            // std::cout << "  Shape of Bi: " << linalg::shape(Bi) << std::endl;
+            // std::cout << "  Shape of Wc: " << linalg::shape(Wc) << std::endl;
+            // std::cout << "  Shape of Bc: " << linalg::shape(Bc) << std::endl;
+            // std::cout << "  Shape of Wo: " << linalg::shape(Wo) << std::endl;
+            // std::cout << "  Shape of Bo: " << linalg::shape(Bo) << std::endl;
 
             //Concatenate activation/hidden state of the previous state and the current input x_t
             Matrix concat = linalg::generateZeros(M, N_X+N_A);
@@ -60,24 +73,28 @@ namespace LSTMCell {
                 }
             }
             for (size_t i = 0; i < M; i++) {
-                for (size_t j = 0; j < N_A; j++) {
+                for (size_t j = 0; j < N_X; j++) {
                     concat[i][N_A + j] = x_t[i][j];
                 }
             }
+            // std::cout << " DEBUG - Shape of concat: " << linalg::shape(concat) << std::endl;
+
+            // std::cout << "LSTM-Cell Forward concat successful" << std::endl;
 
             //Compute the forward pass activations using LSTM formulas:
-            Matrix candidate = activations::tanh(linalg::add(linalg::matmul(Wi, concat), Bc));
-            Matrix update_gate = activations::sigmoid(linalg::add(linalg::matmul(Wi, concat), Bi));
-            Matrix forget_gate = activations::sigmoid(linalg::add(linalg::matmul(Wf, concat), Bf));
-            Matrix output_gate = activations::sigmoid(linalg::add(linalg::matmul(Wo, concat), Bo));
-            Matrix c_next = linalg::add(linalg::elementMultiply(update_gate, candidate), linalg::elementMultiply(forget_gate, c_prev));
-            Matrix a_next = linalg::elementMultiply(output_gate, activations::tanh(c_next));
+            Matrix candidate = activations::tanh(linalg::add(linalg::matmul(Wi, linalg::transpose(concat)), Bc));
+            Matrix update_gate = activations::sigmoid(linalg::add(linalg::matmul(Wi, linalg::transpose(concat)), Bi));
+            Matrix forget_gate = activations::sigmoid(linalg::add(linalg::matmul(Wf, linalg::transpose(concat)), Bf));
+            Matrix output_gate = activations::sigmoid(linalg::add(linalg::matmul(Wo, linalg::transpose(concat)), Bo));
+            Matrix c_next = linalg::transpose(linalg::add(linalg::elementMultiply(update_gate, candidate), linalg::transpose(linalg::elementMultiply(linalg::transpose(forget_gate), c_prev))));
+            Matrix a_next = linalg::transpose(linalg::elementMultiply(output_gate, linalg::transpose(activations::tanh(c_next))));
 
             //Compute the prediction of the LSTM Cell:
-            Matrix yt_pred = activations::linear(linalg::add(linalg::matmul(Wy, a_next), By));
+            Matrix yt_pred = linalg::transpose(activations::linear(linalg::add(linalg::matmul(Wy, a_next), By)));
 
             //Return next cell parameters and cached values for backprop
             auto params_tuple = std::make_tuple(a_next, c_next, a_prev, c_prev, forget_gate, update_gate, candidate, output_gate, x_t, params);
+
             return std::make_tuple(a_next, c_next, yt_pred, params_tuple);
     }
 

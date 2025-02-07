@@ -17,6 +17,8 @@ namespace LSTMNetwork {
     typedef std::map<std::string, variantTensor> gradientDict;
 
     matrixDict init_params(const int n_input, const int n_hidden, const int n_output, const int layer) {
+
+        std::cout << "LSTMCell::init_params - n_input: " << n_input << ", n_hidden: " << n_hidden << ", n_output: " << n_output << ", layer: " << layer << std::endl; // Print n_input, n_hidden
             //NOTE: n represents the columns / num of features in the data
             matrixDict params;
 
@@ -24,19 +26,19 @@ namespace LSTMNetwork {
             //NOTE: We might need to transpose all these values
             //Forget gate:
             params["Wf"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
-            params["bf"+std::to_string(layer)] = linalg::generateZeros(n_input, 1);
+            params["bf"+std::to_string(layer)] = linalg::generateZeros(n_hidden, 1);
 
             //Update (input) gate:
             params["Wi"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
-            params["bi"+std::to_string(layer)] = linalg::generateZeros(n_input, 1);
+            params["bi"+std::to_string(layer)] = linalg::generateZeros(n_hidden, 1);
 
             //Candidate/memory cells
             params["Wc"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
-            params["bc"+std::to_string(layer)] = linalg::generateZeros(n_input, 1);
+            params["bc"+std::to_string(layer)] = linalg::generateZeros(n_hidden, 1);
 
             //Output gate:
             params["Wo"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_hidden, n_hidden+n_input));
-            params["bo"+std::to_string(layer)] = linalg::generateZeros(n_input, 1);
+            params["bo"+std::to_string(layer)] = linalg::generateZeros(n_hidden, 1);
 
             //Predictions
             params["Wy"+std::to_string(layer)] = linalg::scalarMultiply(0.01, linalg::randn(n_output, n_hidden));
@@ -61,8 +63,15 @@ namespace LSTMNetwork {
 
             //Init shapes. NOTE: n_a, n_y might need to be reversed
             const int m = x.size(), n_x = x[0][0].size(), timesteps = x[0].size(), n_y = Wy.size(), n_a = Wy[0].size();
+            std::cout << "LSTM-Forward - n_a (calculated from Wy[0].size()): " << n_a << std::endl; // Print n_a
 
-            // Init states
+            /* Init states
+                * Hidden state `a` = {n_a, m, timestep}
+                * Candidate state `c` = {n_a, m, timestep}
+                * Output state `y` = {n_y, m, timestep}
+                *
+             */
+
             Tensor3D hidden_state = linalg::generateZeros(m, timesteps, n_a);
             Tensor3D candidate = linalg::generateZeros(m, timesteps, n_a);
             Tensor3D prediction = linalg::generateZeros(m, timesteps, n_y);
@@ -70,6 +79,8 @@ namespace LSTMNetwork {
             // Init matrices for hidden states at timesteps
             Matrix a_next = a_initial;
             Matrix c_next = linalg::generateZeros(m, n_a);
+
+            std::cout << "LSTM Forward initialization successful" << std::endl;
 
             //Forward pass for every timestep
             for (size_t timestep = 0; timestep < timesteps; timestep++) {
@@ -80,26 +91,45 @@ namespace LSTMNetwork {
                         x_t[i][j] = x[i][timestep][j];
                     }
                 }
+                // std::cout << "LSTM Forward slice successful" << std::endl;
 
                 //Compute the matrices and parameters for the current timestep cell
                 std::tuple< Matrix, Matrix, Matrix, cacheTuple >
                 cell_state = LSTMCell::lstm_cell_forward(x_t, a_next, c_next, params, layer);
+
+                std::cout << "LSTM-Cell Forward successful" << std::endl;
 
                 //Extract the values of the current timestep cell
                 a_next = std::get<0>(cell_state), c_next = std::get<1>(cell_state);
                 Matrix y_t = std::get<2>(cell_state);
                 cacheTuple cache_t = std::get<3>(cell_state);
 
+                // std::cout << "LSTM Forward timestep extraction successful" << std::endl;
+
                 //Store the new values of the hidden, candidate/memory, and prediction states for the next timestep
                 //Matrix a_temp(m, std::vector<double>(n_x));
-                for (size_t i = 0; i < m; i++) {
-                    for (size_t j = 0; j < n_x; j++) {
+
+                for (size_t i = 0; i < a_next.size(); i++) {
+                    for (size_t j = 0; j < a_next[0].size(); j++) {
                         hidden_state[i][timestep][j] = a_next[i][j];
+                    }
+                }
+
+                for (size_t i = 0; i < y_t.size(); i++) {
+                    for (size_t j = 0; j < y_t[0].size(); j++) {
                         prediction[i][timestep][j] = y_t[i][j];
+                    }
+                }
+
+                for (size_t i = 0; i < c_next.size(); i++) {
+                    for (size_t j = 0; j < c_next[0].size(); j++) {
                         candidate[i][timestep][j] = c_next[i][j];
                     }
                 }
+
                 cache.push_back(cache_t);
+
+                std::cout << "LSTM Forward cache pushed successfully" << std::endl;
             }
 
             //Return cache and x-data for backprop

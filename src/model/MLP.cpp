@@ -40,6 +40,9 @@ namespace MLP {
         /* Init params as a dict/map: */
         std::map<std::string, Matrix> params;
 
+        std::cout << "MLP::init_mlp_params - layer_dimensions.size(): " << layer_dimensions.size() << std::endl;
+        std::cout << "MLP::init_mlp_params - layer index (layer): " << layer << std::endl;
+
         /* Init the weight matrix of the current MLP layer */
         //std::cout << "He Normalizing:" << std::endl;
         params["W"+std::to_string(layer)] = he_normalization(layer_dimensions[layer], layer_dimensions[layer-1]);
@@ -52,9 +55,10 @@ namespace MLP {
     }
 
     //Dense layer (MLP)
-    std::tuple<Matrix, matrixDict> Dense(Matrix a_in, matrixDict& params, const std::function<Matrix(Matrix)>& activation, const int layer, matrixDict& cache) {
+    std::tuple<Matrix, matrixDict> Dense(Matrix a_in, matrixDict& params, const std::function<Matrix(Matrix)>& activation, const int layer) {
         const Matrix W = params["W"+std::to_string(layer)];
         Matrix b = params["b"+std::to_string(layer)];
+        matrixDict cache;
 
         if (layer == 1) {
             a_in = linalg::transpose(a_in);
