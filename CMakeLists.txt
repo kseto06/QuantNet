@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.29)
-project(StockPredictionApp)
+project(QuantNet VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
@@ -14,18 +14,20 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fsanitize=address")
 endif()
 
-add_executable(StockPredictionApp
-        QuantNet/src/model/linalg.cpp
-        QuantNet/src/train_model.cpp
-        QuantNet/src/model/activations.cpp
-        QuantNet/src/model/LSTMCell.cpp
-        QuantNet/src/model/LSTMNetwork.cpp
-        QuantNet/src/model/linalg.h
-        QuantNet/src/model/activations.h
-        QuantNet/src/model/LSTMCell.h
-        QuantNet/src/model/LSTMNetwork.h
-        QuantNet/src/model/MLP.cpp
-        QuantNet/src/model/MLP.h
-        QuantNet/src/model/HybridModel.cpp
-        QuantNet/src/model/HybridModel.h
+add_executable(QuantNet
+        src/model/linalg.cpp
+        src/train_model.cpp
+        src/model/activations.cpp
+        src/model/LSTMCell.cpp
+        src/model/LSTMNetwork.cpp
+        src/model/linalg.h
+        src/model/activations.h
+        src/model/LSTMCell.h
+        src/model/LSTMNetwork.h
+        src/model/MLP.cpp
+        src/model/MLP.h
+        src/model/HybridModel.cpp
+        src/model/HybridModel.h
 )
+
+set_property(TARGET QuantNet PROPERTY CXX_STANDARD 20)
