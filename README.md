@@ -49,7 +49,7 @@ int main() {
 
         // Backward prop
         HybridModel::back_prop();
-        std::cout << "Backprop done.\n";
+        std::cout << "Backprop done" << std::endl;
     }
 
     return 0;
