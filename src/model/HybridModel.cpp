@@ -270,6 +270,7 @@ namespace HybridModel {
 
         //predictions and current y_train are of the same mini-batch (BATCH_SIZE = 64):
         accumulated_loss += MSE(predictions, targets);
+        std::cout << "Loss: " << accumulated_loss << std::endl;
     }
 
     void back_prop() {
