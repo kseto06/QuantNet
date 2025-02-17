@@ -3,8 +3,13 @@
 <p align="center">This repository contains an implementation of LSTM and MLP from scratch in C++ with zero external dependencies, using only the C++ standard library. 
 </p>
 
-<p align="center">This framework supports neural network architectures combining hybrid LSTM and MLP neural networks which allow for a variety of sequence model or time-series applications.
-</p>
+<div style="text-align: center;">
+    <img src="lstm-cell.png">
+</div>
+
+<br>
+
+This framework supports neural network architectures combining hybrid LSTM and MLP neural networks which allow for a variety of sequence model or time-series applications.
 
 <br>
 
