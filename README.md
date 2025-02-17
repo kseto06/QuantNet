@@ -1,7 +1,11 @@
 <h1 align= "center">C++ LSTM</h1>
 
-This repository contains an implementation of LSTM and MLP from scratch in C++ with **zero external dependencies**, using only the C++ standard library. 
-This framework supports neural network architectures combining hybrid LSTM and MLP neural networks for time-series prediction.
+<p align="center">This repository contains an implementation of LSTM and MLP from scratch in C++ with zero external dependencies, using only the C++ standard library. 
+</p>
+
+<p align="center">This framework supports neural network architectures combining hybrid LSTM and MLP neural networks which allow for a variety of sequence model or time-series applications.
+</p>
+
 <br>
 
 Sample implementation (from `src/train_model.cpp`)
@@ -51,7 +55,6 @@ int main() {
     return 0;
 }
 ```
-
 <br>
 <br>
 
