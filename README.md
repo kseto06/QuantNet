@@ -61,8 +61,6 @@ int main() {
 }
 ```
 <br>
-<br>
-
 ⚠ **DISCLAIMER: This project is incomplete.** 
 <br>
 When I initially started this project in November 2024, when I was still wanting to learn more about deep learning
