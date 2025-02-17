@@ -73,7 +73,7 @@ current big interest (as of Feb. 2025), which is reinforcement learning (RL).
 
 Even though it is incomplete, I have still been able to successfully implement forward and backward functions of an LSTM as outlined in the [paper](https://deeplearning.cs.cmu.edu/S23/document/readings/LSTM.pdf).
 I believe that with this, I have already achieved my original goal of being able to implement the LSTM from scratch in C++. And not to mention -- I've already been able to implement a MLP from scratch in Python
-in my [(OtakuNet)](https://github.com/kseto06/OtakuNet) project.
+in my [OtakuNet](https://github.com/kseto06/OtakuNet) project.
 
 <br> 
 In the future, I might come back to finish the rest of this project -- we'll see!
