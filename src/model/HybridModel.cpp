@@ -345,12 +345,4 @@ namespace HybridModel {
             }
         }
     }
-
-    void init_Adam() {
-
-    }
-
-    void optimize() {
-
-    }
 }
