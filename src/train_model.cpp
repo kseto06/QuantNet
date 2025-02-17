@@ -5,20 +5,22 @@
 
 /* TESTING STAGE */
 int main() {
+    // Generate sample data
+    const int batch_size = 5;
+    const int numUnits = 8;
+    HybridModel::Tensor3D X_train = linalg::randn(10, 5, 3);  // 10 samples, 5 timesteps, 3 features
+    const HybridModel::Matrix Y_train = linalg::randn(10, 1);  // 10 samples, 2 output classes
+
+    //Init data and parameters for HybridModel
+    HybridModel::init_data(X_train, Y_train, batch_size);
+    HybridModel::init_hidden_units(numUnits);
+
     // Init model parameters
-    std::vector<std::string> layer_types = {"LSTM", "LSTM", "Relu", "Linear"};
-    std::vector<int> layer_dims = {3, 5, 2, 1};
+    const std::vector<std::string> layer_types = {"LSTM", "LSTM", "Relu", "Linear"}; //Neural network
+    const std::vector<int> layer_dims = {static_cast<int>(X_train[0][0].size()), 12, 8, static_cast<int>(Y_train.size())}; //Neural network layers/features
 
     // Initialize the layers
     HybridModel::init_layers(layer_types, layer_dims);
-
-    // Generate data
-    const int batch_size = 5;
-    const int numUnits = 8;
-    HybridModel::Tensor3D X_train(10, std::vector<std::vector<double>>(5, std::vector<double>(3, 0.5)));  // 10 samples, 5 timesteps, 3 features
-    HybridModel::Matrix Y_train(10, std::vector<double>(1, 1.0));  // 10 samples, 2 output classes
-    HybridModel::init_data(X_train, Y_train, batch_size);//Input into HybridModel class
-    HybridModel::init_hidden_units(numUnits);
 
     // Initialize the network parameters
     HybridModel::initialize_network();
@@ -28,34 +30,21 @@ int main() {
 
     // Model iteration through minibatches
     for (const auto& batch : minibatches) {
-        auto& X_batch = std::get<0>(batch);  // Input tensor
-        auto& Y_batch = std::get<1>(batch);  // Output matrix
-        linalg::printTensor3D(X_batch);
-        linalg::printMatrix(Y_batch);
-
-        // // Reshape the last timestep for testing purposes
-        // HybridModel::Matrix reshaped_X = HybridModel::reshape_last_timestep(X_batch);
-        // std::cout << "Reshaped X: " << reshaped_X.size() << " x " << reshaped_X[0].size() << std::endl;
+        auto& X_batch = std::get<0>(batch);
+        auto& Y_batch = std::get<1>(batch); 
 
         // Forward prop
         HybridModel::forward_prop();
         std::cout << "Forward prop done" << std::endl;
 
-        // // Compute loss
-        // HybridModel::loss();
-        // std::cout << "Loss computation completed.\n";
-        //
-        // // Backward prop
-        // HybridModel::back_prop();
-        // std::cout << "Backward propagation completed.\n";
-    }
+        // Compute loss
+        HybridModel::loss();
+        std::cout << "Loss computed" << std::endl;
 
-    // Final MSE loss
-    // std::vector<double> pred = {0.9, 0.8};
-    // std::vector<double> target = {1.0, 1.0};
-    // double mse = HybridModel::MSE(pred, target);
-    // std::cout << "MSE: " << mse << std::endl;
+        // Backward prop
+        HybridModel::back_prop();
+        std::cout << "Backprop done.\n";
+    }
 
     return 0;
 }
-
