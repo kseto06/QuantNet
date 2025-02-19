@@ -49,8 +49,8 @@ int main() {
     const int numUnits = 64;
     const auto [X_train, Y_train] = DataFramework::preprocessDataFromFile("<absolute_path_to_data>.csv");
 
-    // Init model parameters
-    const std::vector<std::string> layer_types = {"LSTM", "LSTM", "Relu", "Relu", "Linear"}; //Neural network
+    // Init neural network layers and dimensions
+    const std::vector<std::string> layer_types = {"LSTM", "LSTM", "Relu", "Relu", "Linear"};
     const std::vector<int> layer_dims = {static_cast<int>(X_train[0][0].size()), 64, 64, 32, 1};
 
     //Init data and parameters for HybridModel
