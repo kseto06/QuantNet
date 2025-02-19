@@ -38,10 +38,11 @@ namespace HybridModel {
 
     //Anonymous namespace for private variables
     namespace {
-        //Default layer types (i.e. Dense LSTM) and layer dimensions
+        // Global model parameters
         std::vector<std::string> layer_types = {};
         std::vector<int> layer_dims = {};
         std::vector<matrixDict> layer_params;
+        double learning_rate;
 
         //Forward prop variables
         UnifiedCache cache;
@@ -58,9 +59,14 @@ namespace HybridModel {
 
         //Backprop variables
         UnifiedGradients grads;
+
+        //Adam optimizer variables
+        std::vector<std::vector<matrixDict>> Adam_params = {}; //2D to store v and s
+        int t = 0;
+        const double beta1 = 0.9;
+        const double beta2 = 0.999;
+        const double epsilon = 1e-8;
     }
-
-
 
     // Minibatch generation
     std::vector<minibatch> generate_minibatches(const Tensor3D& X, const Matrix& Y, const int batch_size, const int seed) {
@@ -132,6 +138,11 @@ namespace HybridModel {
     // Initialization of the number of LSTM Cells/Units:
     void init_hidden_units(const int numUnits) {
         n_hidden = numUnits;
+    }
+
+    // Initialization of the learning rate
+    void init_learning_rate(const double lr = 3e-4) {
+        learning_rate = lr;
     }
 
     //LSTM/MLP Network initialization
@@ -208,6 +219,7 @@ namespace HybridModel {
 
         //MLP
         Matrix a_out;
+        bool first_mlp_encountered = false;
 
         //LSTM
         Matrix a_initial = linalg::generateZeros(std::get<Tensor3D>(x_train).size(), n_a); //Initially, a0 is a Matrix of zeros with shape (m, n_a)
@@ -225,43 +237,77 @@ namespace HybridModel {
                     LSTMCache current_lstm_tuple = LSTMNetwork::lstm_forward(std::get<Tensor3D>(x_train), a_initial, layer_params[i-1], i);
                     new_x_state = std::get<1>(std::get<3>(current_lstm_tuple));
                     new_hidden_state = std::get<0>(current_lstm_tuple);
-                    cache.cache.push_back(current_lstm_tuple);
+                    
+                    if (cache.cache.size() == layer_types.size()) { //Replacing (current iteration != 1st iteration)
+                        cache.cache[i] = current_lstm_tuple;
+                    } else { //First iteration
+                        cache.cache.push_back(current_lstm_tuple);
+                    }
+
                     std::cout << "LSTM forward, layer 1 --> successful" << std::endl;
                 } else {
                     LSTMCache current_lstm_tuple = LSTMNetwork::lstm_forward(new_x_state, reshape_last_timestep(new_hidden_state), layer_params[i-1], i);
                     new_x_state = std::get<1>(std::get<3>(current_lstm_tuple));
                     new_hidden_state = std::get<0>(current_lstm_tuple);
-                    cache.cache.push_back(current_lstm_tuple);
+
+                    if (cache.cache.size() == layer_types.size()) { 
+                        cache.cache[i] = current_lstm_tuple;
+                    } else {
+                        cache.cache.push_back(current_lstm_tuple);
+                    }
+
                     std::cout << "LSTM forward, all other layers successful" << std::endl;
                 }
             } else if (layer_types[i-1] == "Relu") {
                 // Reshape a_out using the last timestepped hidden state from LSTM_forward
                 if (layer_types[i-2] == "LSTM" && i != 1) {
                     a_out = reshape_last_timestep(new_hidden_state);
+                    first_mlp_encountered = true;
+                } else {
+                    first_mlp_encountered = false;
                 }
 
                 if (i == 1) {
                     //Input x is a Matrix
-                    std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(std::get<Matrix>(x_train), layer_params[i-1], activations::relu, i);
+                    std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(std::get<Matrix>(x_train), layer_params[i-1], activations::relu, i, first_mlp_encountered);
                     a_out = std::get<0>(current_dense_tuple);
                     matrixDict current_mlp_cache = std::get<1>(current_dense_tuple);
-                    cache.cache.push_back(current_mlp_cache);
+
+                    if (cache.cache.size() == layer_types.size()) {
+                        cache.cache[i] = current_mlp_cache;
+                    } else {
+                        cache.cache.push_back(current_mlp_cache);
+                    }
+
                 } else {
-                    std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(a_out, layer_params[i-1], activations::relu, i);
+                    std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(a_out, layer_params[i-1], activations::relu, i, first_mlp_encountered);
                     a_out = std::get<0>(current_dense_tuple);
                     matrixDict current_mlp_cache = std::get<1>(current_dense_tuple);
-                    cache.cache.push_back(current_mlp_cache);
+                    
+                    if (cache.cache.size() == layer_types.size()) {
+                        cache.cache[i] = current_mlp_cache;
+                    } else {
+                        cache.cache.push_back(current_mlp_cache);
+                    }
                 }
             } else if (layer_types[i-1] == "Linear") {
                 // Reshape a_out using the last timestepped hidden state from LSTM_forward
                 if (layer_types[i-1] == "LSTM" && i != 1) {
                     a_out = reshape_last_timestep(new_hidden_state);
+                    first_mlp_encountered = true;
+                } else {
+                    first_mlp_encountered = false;
                 }
 
-                std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(a_out, layer_params[i-1], activations::linear, i);
+                std::tuple<Matrix, matrixDict> current_dense_tuple = MLP::Dense(a_out, layer_params[i-1], activations::linear, i, first_mlp_encountered);
                 a_out = std::get<0>(current_dense_tuple);
                 matrixDict current_mlp_cache = std::get<1>(current_dense_tuple);
-                cache.cache.push_back(current_mlp_cache);
+                
+                if (cache.cache.size() == layer_types.size()) {
+                    cache.cache[i] = current_mlp_cache;
+                } else {
+                    cache.cache.push_back(current_mlp_cache);
+                }
             }
         }
         //Set the final prediction matrix
@@ -286,7 +332,11 @@ namespace HybridModel {
 
         //predictions and current y_train are of the same mini-batch (BATCH_SIZE = 64):
         accumulated_loss += MSE(predictions, targets);
-        std::cout << "Loss: " << accumulated_loss << std::endl;
+        //std::cout << "Loss: " << accumulated_loss << std::endl;
+    }
+
+    double return_avg_loss() {
+        return accumulated_loss / (std::holds_alternative<Tensor3D>(x_train) ? std::get<Tensor3D>(x_train).size() : std::get<Matrix>(x_train).size());
     }
 
     void back_prop() {
@@ -339,7 +389,12 @@ namespace HybridModel {
                     dA_tensor = std::get<Tensor3D>(current_lstm_grads["da0"+std::to_string(layer)]);
 
                     //Store gradients
-                    grads.grads.push_back(current_lstm_grads);
+                    if (grads.grads.size() == layer_types.size()) {
+                        grads.grads[layer] = current_lstm_grads;
+                    } else {
+                        grads.grads.push_back(current_lstm_grads);
+                    }
+                    
                 }
 
             } else if (layer_types[layer-1] == "Relu" || layer_types[layer-1] == "Linear") {
@@ -358,16 +413,163 @@ namespace HybridModel {
                     (layer_types[layer-1] == "Relu") ? activations::relu : activations::linear); //Ternary operator between Relu and Linear
 
                 //Store gradients
-                grads.grads.push_back(current_mlp_grads);
+                if (grads.grads.size() == layer_types.size()) {
+                    grads.grads[layer] = current_mlp_grads;
+                } else {
+                    grads.grads.push_back(current_mlp_grads);
+                }
             }
         }
     }
 
     void init_Adam() {
+        for (int i = 1; i <= layer_types.size(); i++) {
+            matrixDict v; //Momentum
+            matrixDict s; //Root Mean Square Propagation (RMSP)
+            std::cout << "Layer " << i << ": " << layer_types[i-1] << std::endl;
 
+            if (layer_types[i-1] == "LSTM") {
+                // Forget gates
+                v["dWf"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wf"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wf"+std::to_string(i)][0].size()));
+                v["dbf"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["bf"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["bf"+std::to_string(i)][0].size()));
+                s["dWf"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wf"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wf"+std::to_string(i)][0].size()));
+                s["dbf"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["bf"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["bf"+std::to_string(i)][0].size()));
+
+                // Update (input) gates
+                v["dWi"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wi"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wi"+std::to_string(i)][0].size()));
+                v["dbi"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["bi"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["bi"+std::to_string(i)][0].size()));
+                s["dWi"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wi"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wi"+std::to_string(i)][0].size()));
+                s["dbi"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["bi"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["bi"+std::to_string(i)][0].size()));
+
+                // Candidate/memory cells
+                v["dWc"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wc"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wc"+std::to_string(i)][0].size()));
+                v["dbc"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["bc"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["bc"+std::to_string(i)][0].size()));
+                s["dWc"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wc"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wc"+std::to_string(i)][0].size()));
+                s["dbc"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["bc"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["bc"+std::to_string(i)][0].size()));
+
+                //Output gates
+                v["dWo"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wo"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wo"+std::to_string(i)][0].size()));
+                v["dbo"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["bo"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["bo"+std::to_string(i)][0].size()));
+                s["dWo"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wo"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wo"+std::to_string(i)][0].size()));
+                s["dbo"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["bo"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["bo"+std::to_string(i)][0].size()));
+
+                //Predictions
+                v["dWy"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wy"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wy"+std::to_string(i)][0].size()));
+                v["dby"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["by"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["by"+std::to_string(i)][0].size()));
+                s["dWy"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["Wy"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["Wy"+std::to_string(i)][0].size()));
+                s["dby"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["by"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["by"+std::to_string(i)][0].size()));
+
+            } else if (layer_types[i-1] == "Relu" || layer_types[i-1] == "Linear") {
+                v["dW"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["W"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["W"+std::to_string(i)][0].size()));
+                v["db"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["b"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["b"+std::to_string(i)][0].size()));
+                s["dW"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["W"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["W"+std::to_string(i)][0].size()));
+                s["db"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["b"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["b"+std::to_string(i)][0].size()));
+            }
+
+            if (Adam_params.size() == layer_types.size()) {
+                Adam_params[i][0] = v; //Store v
+                Adam_params[i][1] = s; //Store s
+            } else {
+                Adam_params[i].push_back(v);
+                Adam_params[i].push_back(s);
+            }
+
+            std::cout << "Adam parameter initialization successful" << std::endl;
+        }
     }
 
     void optimize() {
+        for (int l = 1; l <= layer_types.size(); l++) {
+            matrixDict v = Adam_params[l][0];
+            matrixDict s = Adam_params[l][1];
+            matrixDict v_corrected = {};
+            matrixDict s_corrected = {};
 
+            if (layer_types[l-1] == "LSTM") {
+                // Calculate momentums with beta1
+                auto& grad_map = std::get<gradientDict>(grads.grads[l-1]);
+                v["dWf"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dWf"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dWf"+std::to_string(l+1)])));
+                v["dbf"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dbf"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dbf"+std::to_string(l+1)])));
+                v["dWi"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dWi"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dWi"+std::to_string(l+1)])));
+                v["dbi"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dbi"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dbi"+std::to_string(l+1)])));
+                v["dWc"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dWc"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dWc"+std::to_string(l+1)])));
+                v["dbc"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dbc"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dbc"+std::to_string(l+1)])));
+                v["dWo"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dWo"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dWo"+std::to_string(l+1)])));
+                v["dbo"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dbo"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dbo"+std::to_string(l+1)])));
+                v["dWy"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dWy"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dWy"+std::to_string(l+1)])));
+                v["dby"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dby"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dby"+std::to_string(l+1)])));
+
+                // Calculate corrected v values:
+                v_corrected["dWf"+std::to_string(l+1)] = linalg::division(v["dWf"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dbf"+std::to_string(l+1)] = linalg::division(v["dbf"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dWi"+std::to_string(l+1)] = linalg::division(v["dWi"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dbi"+std::to_string(l+1)] = linalg::division(v["dbi"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dWc"+std::to_string(l+1)] = linalg::division(v["dWc"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dbc"+std::to_string(l+1)] = linalg::division(v["dbc"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dWo"+std::to_string(l+1)] = linalg::division(v["dWo"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dbo"+std::to_string(l+1)] = linalg::division(v["dbo"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dWy"+std::to_string(l+1)] = linalg::division(v["dWy"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["dby"+std::to_string(l+1)] = linalg::division(v["dby"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+
+                // Calculate the RMSProps with beta2
+                s["dWf"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dWf"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dWf"+std::to_string(l+1)]), 2.0)));
+                s["dbf"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dbf"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dbf"+std::to_string(l+1)]), 2.0)));
+                s["dWi"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dWi"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dWi"+std::to_string(l+1)]), 2.0)));
+                s["dbi"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dbi"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dbi"+std::to_string(l+1)]), 2.0)));
+                s["dWc"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dWc"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dWc"+std::to_string(l+1)]), 2.0)));
+                s["dbc"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dbc"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dbc"+std::to_string(l+1)]), 2.0)));
+                s["dWo"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dWo"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dWo"+std::to_string(l+1)]), 2.0)));
+                s["dbo"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dbo"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dbo"+std::to_string(l+1)]), 2.0)));
+                s["dWy"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dWy"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dWy"+std::to_string(l+1)]), 2.0)));
+                s["dby"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dby"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dby"+std::to_string(l+1)]), 2.0)));
+
+                // Calculate corrected s values:
+                s_corrected["dWf"+std::to_string(l+1)] = linalg::division(s["dWf"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dbf"+std::to_string(l+1)] = linalg::division(s["dbf"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dWi"+std::to_string(l+1)] = linalg::division(s["dWi"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dbi"+std::to_string(l+1)] = linalg::division(s["dbi"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dWc"+std::to_string(l+1)] = linalg::division(s["dWc"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dbc"+std::to_string(l+1)] = linalg::division(s["dbc"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dWo"+std::to_string(l+1)] = linalg::division(s["dWo"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dbo"+std::to_string(l+1)] = linalg::division(s["dbo"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dWy"+std::to_string(l+1)] = linalg::division(s["dWy"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["dby"+std::to_string(l+1)] = linalg::division(s["dby"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+
+                // Update parameters
+                layer_params[l-1]["Wf"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["Wf"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dWf"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dWf"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["bf"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["bf"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dbf"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dbf"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["Wi"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["Wi"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dWi"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dWi"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["bi"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["bi"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dbi"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dbi"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["Wc"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["Wc"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dWc"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dWc"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["bc"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["bc"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dbc"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dbc"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["Wo"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["Wo"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dWo"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dWo"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["bo"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["bo"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dbo"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dbo"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["Wy"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["Wy"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dWy"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dWy"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["by"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["by"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dby"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dby"+std::to_string(l+1)]), epsilon)));
+            
+            } else if (layer_types[l-1] == "Relu" || layer_types[l-1] == "Linear") {
+                // Calculate momentums with beta1
+                auto& grad_map = std::get<gradientDict>(grads.grads[l-1]);
+                v["dW"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["dW"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["dW"+std::to_string(l+1)])));
+                v["db"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta1, v["db"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta1), std::get<Matrix>(grad_map["db"+std::to_string(l+1)])));
+
+                // Calculate corrected v values:
+                v_corrected["dW"+std::to_string(l+1)] = linalg::division(v["dW"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+                v_corrected["db"+std::to_string(l+1)] = linalg::division(v["db"+std::to_string(l+1)], (1-std::pow(beta1, t)));
+
+                // Calculate the RMSProps with beta2
+                s["dW"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["dW"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["dW"+std::to_string(l+1)]), 2.0)));
+                s["db"+std::to_string(l+1)] = linalg::add(linalg::scalarMultiply(beta2, s["db"+std::to_string(l+1)]), linalg::scalarMultiply((1-beta2), linalg::pow(std::get<Matrix>(grad_map["db"+std::to_string(l+1)]), 2.0)));
+
+                // Calculate corrected s values:
+                s_corrected["dW"+std::to_string(l+1)] = linalg::division(s["dW"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+                s_corrected["db"+std::to_string(l+1)] = linalg::division(s["db"+std::to_string(l+1)], (1-std::pow(beta2, t)));
+
+                // Update parameters
+                layer_params[l-1]["W"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["W"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["dW"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["dW"+std::to_string(l+1)]), epsilon)));
+                layer_params[l-1]["b"+std::to_string(l+1)] = linalg::subtract(layer_params[l-1]["b"+std::to_string(l+1)], linalg::division(linalg::scalarMultiply(learning_rate, v_corrected["db"+std::to_string(l+1)]), linalg::add(linalg::sqrt(s_corrected["db"+std::to_string(l+1)]), epsilon)));
+            }
+        }
+        t += 1;
     }
 }

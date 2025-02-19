@@ -55,12 +55,12 @@ namespace MLP {
     }
 
     //Dense layer (MLP)
-    std::tuple<Matrix, matrixDict> Dense(Matrix a_in, matrixDict& params, const std::function<Matrix(Matrix)>& activation, const int layer) {
+    std::tuple<Matrix, matrixDict> Dense(Matrix a_in, matrixDict& params, const std::function<Matrix(Matrix)>& activation, const int layer, bool encountered) {
         const Matrix W = params["W"+std::to_string(layer)];
         Matrix b = params["b"+std::to_string(layer)];
         matrixDict cache;
 
-        if (layer == 1) {
+        if (layer == 1 || encountered == true) {
             a_in = linalg::transpose(a_in);
         }
 

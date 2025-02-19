@@ -100,7 +100,7 @@ namespace LSTMCell {
             // std::cout << "  Shape of a_next: " << linalg::shape(a_next) << std::endl;
 
             //Compute the prediction of the LSTM Cell:
-            Matrix yt_pred = linalg::transpose(activations::linear(linalg::add(linalg::matmul(Wy, a_next), By)));
+            Matrix yt_pred = linalg::transpose(activations::linear(linalg::add(linalg::matmul(Wy, linalg::transpose(a_next)), By)));
 
             //Return next cell parameters and cached values for backprop
             auto params_tuple = std::make_tuple(a_next, c_next, a_prev, c_prev, forget_gate, update_gate, candidate, output_gate, x_t, params);

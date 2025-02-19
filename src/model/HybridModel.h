@@ -13,11 +13,15 @@ namespace HybridModel {
     void init_data(const std::variant<Matrix, Tensor3D>& X, const Matrix& Y, const int batch_size);
     void init_layers(const std::vector<std::string>& layer_type, const std::vector<int>& layer_dim);
     void init_hidden_units(const int numUnits);
+    void init_learning_rate(const double lr);
     void initialize_network();
     Matrix reshape_last_timestep(const Tensor3D& hidden_state);
     void forward_prop(std::variant<Tensor3D, Matrix> x_train); //x_train = x_batch
     void loss(Matrix y_train); //y_train = y_batch
+    double return_avg_loss();
     void back_prop();
+    void init_Adam();
+    void optimize();
 }
 
 #endif //HYBRIDMODEL_H
