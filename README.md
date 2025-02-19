@@ -18,7 +18,7 @@
   - [x] Adam Optimizer
      
 - [x] Data Engineering Framework
-    - [x] Implemented features similar to     
+    - [x] Transforms original stock data to stock features that are commonly used in investment analysis    
 
 - [x] Linear Algebra Framework
   - [x] Made from scratch with functionalities inspired by NumPy
