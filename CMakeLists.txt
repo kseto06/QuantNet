@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.29)
-project(cpp-lstm VERSION 0.1.0 LANGUAGES CXX)
+project(QuantNet VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
@@ -14,7 +14,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fsanitize=address")
 endif()
 
-add_executable(cpp-lstm
+add_executable(QuantNet
         src/model/linalg.cpp
         src/train_model.cpp
         src/model/activations.cpp
@@ -28,6 +28,9 @@ add_executable(cpp-lstm
         src/model/MLP.h
         src/model/HybridModel.cpp
         src/model/HybridModel.h
+        src/framework/DataFramework.cpp
+        src/framework/DataFramework.h
 )
 
-set_property(TARGET cpp-lstm PROPERTY CXX_STANDARD 20)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src)
+set_property(TARGET QuantNet PROPERTY CXX_STANDARD 20)
