@@ -1,23 +1,24 @@
 #include "model/linalg.h"
 #include "model/HybridModel.h"
+#include "framework/DataFramework.h"
 #include <vector>
 #include <iostream>
 
 /* TESTING STAGE */
 int main() {
     // Generate sample data
-    const int batch_size = 5;
-    const int numUnits = 8;
-    HybridModel::Tensor3D X_train = linalg::randn(10, 5, 3);  // 10 samples, 5 timesteps, 3 features
-    const HybridModel::Matrix Y_train = linalg::randn(10, 1);  // 10 samples, 2 output classes
+    const int batch_size = 64;
+    const int numUnits = 64;
+    const auto [X_train, Y_train] = DataFramework::preprocessDataFromFile("/Users/kaden/Desktop/Code/MLProjects/StockPredictionApp/QuantNet/src/data/tsla_2025.csv");
 
     //Init data and parameters for HybridModel
     HybridModel::init_data(X_train, Y_train, batch_size);
     HybridModel::init_hidden_units(numUnits);
 
     // Init model parameters
-    const std::vector<std::string> layer_types = {"LSTM", "LSTM", "Relu", "Linear"}; //Neural network
-    const std::vector<int> layer_dims = {static_cast<int>(X_train[0][0].size()), 12, 8, static_cast<int>(Y_train.size())}; //Neural network layers/features
+    const std::vector<std::string> layer_types = {"LSTM", "LSTM", "Relu", "Relu", "Linear"}; //Neural network
+    //const std::vector<int> layer_dims = {static_cast<int>(X_train[0][0].size()), 12, 8, static_cast<int>(Y_train.size())}; //Neural network layers/features
+    const std::vector<int> layer_dims = {static_cast<int>(X_train[0][0].size()), 64, 64, 32, 1};
 
     // Initialize the layers
     HybridModel::init_layers(layer_types, layer_dims);
@@ -34,16 +35,16 @@ int main() {
         auto& Y_batch = std::get<1>(batch); 
 
         // Forward prop
-        HybridModel::forward_prop();
+        HybridModel::forward_prop(X_batch);
         std::cout << "Forward prop done" << std::endl;
 
         // Compute loss
-        HybridModel::loss();
+        HybridModel::loss(Y_batch);
         std::cout << "Loss computed" << std::endl;
 
         // Backward prop
         HybridModel::back_prop();
-        std::cout << "Backprop done" << std::endl;
+        std::cout << "Backprop done.\n";
     }
 
     return 0;
