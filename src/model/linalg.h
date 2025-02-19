@@ -27,6 +27,7 @@ namespace linalg {
     double dot(const std::vector<double> &a, const std::vector<double> &b);
     Matrix matmul(const Matrix &a, const Matrix &b);
     Matrix add(const Matrix &a, const Matrix &b);
+    Matrix add(const Matrix &a, const double s);
     Matrix subtract(const Matrix &a, const Matrix &b);
     Matrix transpose(const Matrix &m);
     Matrix pow(const Matrix &m, const double exponent);

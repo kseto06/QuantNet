@@ -122,6 +122,17 @@ namespace linalg {
         return result;
     }
 
+    // @overload: Scalar addition
+    Matrix add(const Matrix &a, const double scalar) {
+        Matrix result = generateZeros(a.size(), a[0].size());
+        for (size_t i = 0; i < a.size(); i++) {
+            for (size_t j = 0; j < a[0].size(); j++) {
+                result[i][j] += scalar;
+            }
+        }
+        return result;
+    }
+
     // Element wise subtraction
     Matrix subtract(const Matrix &a, const Matrix &b) {
         if (a.size() != b.size() || a[0].size() != b[0].size()) {
