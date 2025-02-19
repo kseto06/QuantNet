@@ -106,7 +106,5 @@ int main() {
 <br>
 
 ### Citations:
-[Original LSTM Paper for LSTM model implementation](https://deeplearning.cs.cmu.edu/S23/document/readings/LSTM.pdf)
-[Feature engineering for the data framework](https://medium.com/aimonks/improving-stock-price-forecasting-by-feature-engineering-8a5d0be2be96)
-
-<br> 
+1) [Original LSTM Paper for LSTM model implementation](https://deeplearning.cs.cmu.edu/S23/document/readings/LSTM.pdf)
+2) [Feature engineering for the data framework](https://medium.com/aimonks/improving-stock-price-forecasting-by-feature-engineering-8a5d0be2be96)
