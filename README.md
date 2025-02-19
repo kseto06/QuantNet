@@ -30,7 +30,7 @@
   - [x] Linear
      
 <br>
-⚠ <b>DISCLAIMER</b>: This project is still IN-PROGRESS and is still in an Alpha testing phase. I am currently still working on debugging and testing the framework and it is not ready to be implemented by users yet.
+⚠ <b>DISCLAIMER</b>: This project is still IN-PROGRESS and is still in an Alpha testing phase. I am currently working on debugging and testing the framework and it is not ready to be implemented by users yet.
 
 <br>
 <br>
