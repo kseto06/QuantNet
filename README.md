@@ -28,6 +28,10 @@
   - [x] Sigmoid
   - [x] tanh
   - [x] Linear
+     
+<br>
+⚠ DISCLAIMER: This project is incomplete and is still in an Alpha testing phase. I am currently still working on debugging and testing the framework and it is not ready to be implemented by users yet.
+<br>
 
 Sample implementation (from `src/train_model.cpp`)
 ```cpp
@@ -101,8 +105,6 @@ int main() {
 }
 
 ```
-<br>
-⚠ DISCLAIMER: This project is incomplete and is still in an Alpha testing phase. I am currently still working on debugging and testing the framework and it is not ready to be implemented by users yet.
 <br>
 
 ### Citations:
