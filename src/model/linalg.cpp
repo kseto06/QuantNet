@@ -290,6 +290,19 @@ namespace linalg {
         return result;
     }
 
+    //randn to generate a Tensor3D of random numbers
+    Tensor3D randn(const int rows, const int timesteps, const int cols) {
+        Tensor3D result(rows, Matrix(timesteps, std::vector<double>(cols)));
+        for (size_t i = 0; i < rows; ++i) {
+            for (size_t j = 0; j < timesteps; ++j) {
+                for (size_t k = 0; k < cols; ++k) {
+                    result[i][j][k] = randnum();
+                }
+            }
+        }
+        return result;
+    }
+
     Matrix sliceCols(const Matrix& mat, size_t start_col, size_t end_col) {
         size_t rows = mat.size();
         size_t cols = mat[0].size();

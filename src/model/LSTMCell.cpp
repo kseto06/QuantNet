@@ -67,13 +67,13 @@ namespace LSTMCell {
 
             //Concatenate activation/hidden state of the previous state and the current input x_t
             Matrix concat = linalg::generateZeros(M, N_X+N_A);
-            for (size_t i = 0; i < M; i++) {
-                for (size_t j = 0; j < N_X; j++) {
+            for (size_t i = 0; i < M; ++i) {
+                for (size_t j = 0; j < N_A; ++j) {
                     concat[i][j] = a_prev[i][j];
                 }
             }
-            for (size_t i = 0; i < M; i++) {
-                for (size_t j = 0; j < N_X; j++) {
+            for (size_t i = 0; i < M; ++i) {
+                for (size_t j = 0; j < N_X; ++j) {
                     concat[i][N_A + j] = x_t[i][j];
                 }
             }
@@ -82,12 +82,22 @@ namespace LSTMCell {
             // std::cout << "LSTM-Cell Forward concat successful" << std::endl;
 
             //Compute the forward pass activations using LSTM formulas:
-            Matrix candidate = activations::tanh(linalg::add(linalg::matmul(Wi, linalg::transpose(concat)), Bc));
+            // std::cerr << "DEBUG: LSTMCell - Shape of Wi: " << linalg::shape(Wi) << std::endl;
+            // std::cerr << "DEBUG: LSTMCell - Shape of transpose(concat): " << linalg::shape(linalg::transpose(concat)) << std::endl;
+            Matrix concat_T = linalg::transpose(concat);
+            Matrix candidate = activations::tanh(linalg::add(linalg::matmul(Wi, concat_T), Bc));
             Matrix update_gate = activations::sigmoid(linalg::add(linalg::matmul(Wi, linalg::transpose(concat)), Bi));
             Matrix forget_gate = activations::sigmoid(linalg::add(linalg::matmul(Wf, linalg::transpose(concat)), Bf));
             Matrix output_gate = activations::sigmoid(linalg::add(linalg::matmul(Wo, linalg::transpose(concat)), Bo));
             Matrix c_next = linalg::transpose(linalg::add(linalg::elementMultiply(update_gate, candidate), linalg::transpose(linalg::elementMultiply(linalg::transpose(forget_gate), c_prev))));
             Matrix a_next = linalg::transpose(linalg::elementMultiply(output_gate, linalg::transpose(activations::tanh(c_next))));
+
+            // if (Wy[0].size() == a_next[0].size()) {
+            //     a_next = linalg::transpose(a_next);
+            // }
+            // std::cout << "  Shape of By: " << linalg::shape(By) << std::endl;
+            // std::cout << "  Shape of Wy: " << linalg::shape(Wy) << std::endl;
+            // std::cout << "  Shape of a_next: " << linalg::shape(a_next) << std::endl;
 
             //Compute the prediction of the LSTM Cell:
             Matrix yt_pred = linalg::transpose(activations::linear(linalg::add(linalg::matmul(Wy, a_next), By)));

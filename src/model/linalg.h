@@ -40,6 +40,7 @@ namespace linalg {
     double randnum();
     std::vector<double> randn(const int n);
     Matrix randn(const int rows, const int cols);
+    Tensor3D randn(const int rows, const int timesteps, const int cols);
     Matrix sliceCols(const Matrix& mat, size_t start_col, size_t end_col);
     std::vector<double> reshape(const Matrix& m);
     Matrix reshape(const std::vector<double> v);

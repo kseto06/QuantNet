@@ -105,6 +105,10 @@ namespace HybridModel {
 
     // MSE loss function
     double MSE(const std::vector<double>& pred, const std::vector<double>& target) {
+        if (pred.size() != target.size()) {
+            throw std::invalid_argument("Prediction and target sizes do not match");
+        }
+
         double loss = 0.0;
         for (size_t i = 0; i < pred.size(); i++) {
             loss += std::pow(pred[i] - target[i], 2);
@@ -134,7 +138,7 @@ namespace HybridModel {
     void initialize_network() {
         std::cout << "initialize_network - n_hidden: " << n_hidden << std::endl;
         //NOTE: layer_type and layer_dims should have the same shape
-        for (int i = 1; i < layer_types.size(); i++) {
+        for (int i = 1; i <= layer_types.size(); i++) {
             matrixDict current_params;
             std::cout << "Layer " << i << ": " << layer_types[i-1] << std::endl;
 
@@ -149,7 +153,7 @@ namespace HybridModel {
                     linalg::printMatrix(std::get<Matrix>(x_train));
                 }
             } else if (layer_types[i-1] == "Relu" || layer_types[i-1] == "Linear") {
-                current_params = MLP::init_mlp_params(layer_dims, i);
+                current_params = MLP::init_mlp_params(layer_dims, i-1);
                 std::cout << "MLP init successful" << std::endl;
             }
             layer_params.push_back(current_params);
@@ -190,7 +194,7 @@ namespace HybridModel {
         return reshaped_tensor;
     }
 
-    void forward_prop() {
+        void forward_prop(std::variant<Tensor3D, Matrix> x_train) {
         /*
         NOTE: Right now, function assumes that the first inputs are LSTMs and last inputs are MLP.
               - e.g: Relu->Relu->LSTM->LSTM is not supported, because LSTMs are placed last
@@ -207,13 +211,13 @@ namespace HybridModel {
 
         //LSTM
         Matrix a_initial = linalg::generateZeros(std::get<Tensor3D>(x_train).size(), n_a); //Initially, a0 is a Matrix of zeros with shape (m, n_a)
-        std::cout << "Shape of a_initial BEFORE lstm_forward: " << linalg::shape(a_initial) << std::endl;
+        //std::cout << "Shape of a_initial BEFORE lstm_forward: " << linalg::shape(a_initial) << std::endl;
         Tensor3D new_x_state;
         Tensor3D new_hidden_state;
 
         std::cout << "Forward prop initialization successful" << std::endl;
 
-        for (int i = 1; i < layer_types.size(); i++) {
+        for (int i = 1; i <= layer_types.size(); i++) {
             std::cout << "Layer " << i << ": " << layer_types[i-1] << std::endl;
             if (layer_types[i-1] == "LSTM") {
                 if (i == 1) {
@@ -264,9 +268,21 @@ namespace HybridModel {
         finalPrediction = a_out;
     }
 
-    void loss() {
+    void loss(Matrix y_train) {
+        //Automatic transposition to correct shape
+        if (finalPrediction.size() == 1 && finalPrediction[0].size() == BATCH_SIZE) {
+            finalPrediction = linalg::transpose(finalPrediction);
+        }
+        if (y_train.size() == 1 && y_train[0].size() == BATCH_SIZE) {
+            y_train = linalg::transpose(y_train);
+        }
+
+        //Reshape predictions and targets
         std::vector<double> predictions = linalg::reshape(finalPrediction);
         std::vector<double> targets = linalg::reshape(y_train);
+
+        // std::cout << predictions.size() << std::endl;
+        // std::cout << targets.size() << std::endl;
 
         //predictions and current y_train are of the same mini-batch (BATCH_SIZE = 64):
         accumulated_loss += MSE(predictions, targets);
@@ -281,22 +297,23 @@ namespace HybridModel {
 
         // Derivatives
         Matrix dA_matrix;
-        if (std::holds_alternative<matrixDict>(cache.cache[L])) {
+        //if (std::holds_alternative<matrixDict>(cache.cache[L-1])) {
             //Access the cache at L
-            matrixDict& layer_cache = std::get<matrixDict>(cache.cache[L]);
+        std::cerr << "DEBUG: back_prop - Layer " << L << " cache variant index: " << cache.cache.size() << std::endl; // Print variant index
+        matrixDict& layer_cache = std::get<matrixDict>(cache.cache[L-1]);
 
-            // Check if the key exists
-            auto item = layer_cache.find("A"+std::to_string(L));
-            if (item != layer_cache.end()) {
-                dA_matrix = item -> second;
-            }
-
-            dA_matrix = linalg::division(linalg::subtract(dA_matrix, y_train), m); //Init gradient for the last layer (derivative of loss function)
+        // Check if the key exists
+        auto item = layer_cache.find("A"+std::to_string(L-1));
+        if (item != layer_cache.end()) {
+            dA_matrix = item -> second;
         }
+
+        dA_matrix = linalg::division(linalg::subtract(dA_matrix, y_train), m); //Init gradient for the last layer (derivative of loss function)
+        //}
         Tensor3D dA_tensor; //To store reshaped LSTM gradients
 
         for (int layer = L; layer >= 1; layer--) {
-            if (layer_types[layer] == "LSTM") {
+            if (layer_types[layer-1] == "LSTM") {
                 if (layer == L) {
                     continue; //Skip, assume last layer is always a linear/MLP output
                 }
@@ -325,7 +342,7 @@ namespace HybridModel {
                     grads.grads.push_back(current_lstm_grads);
                 }
 
-            } else if (layer_types[layer] == "Relu" || layer_types[layer] == "Linear") {
+            } else if (layer_types[layer-1] == "Relu" || layer_types[layer-1] == "Linear") {
                 if (layer == L) {
                     continue;
                 }
@@ -337,12 +354,20 @@ namespace HybridModel {
                 //Compute gradients
                 matrixDict current_mlp_grads = MLP::mlp_backward(
                     a_in_matrix, dA_matrix, y_train,
-                    std::get<matrixDict>(cache.cache[layer]), layer,
-                    (layer_types[layer] == "Relu") ? activations::relu : activations::linear); //Ternary operator between Relu and Linear
+                    std::get<matrixDict>(cache.cache[layer-1]), layer,
+                    (layer_types[layer-1] == "Relu") ? activations::relu : activations::linear); //Ternary operator between Relu and Linear
 
                 //Store gradients
                 grads.grads.push_back(current_mlp_grads);
             }
         }
+    }
+
+    void init_Adam() {
+
+    }
+
+    void optimize() {
+
     }
 }

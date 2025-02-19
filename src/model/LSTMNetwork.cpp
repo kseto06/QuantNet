@@ -18,7 +18,7 @@ namespace LSTMNetwork {
 
     matrixDict init_params(const int n_input, const int n_hidden, const int n_output, const int layer) {
 
-        std::cout << "LSTMCell::init_params - n_input: " << n_input << ", n_hidden: " << n_hidden << ", n_output: " << n_output << ", layer: " << layer << std::endl; // Print n_input, n_hidden
+            // std::cout << "LSTMCell::init_params - n_input: " << n_input << ", n_hidden: " << n_hidden << ", n_output: " << n_output << ", layer: " << layer << std::endl; // Print n_input, n_hidden
             //NOTE: n represents the columns / num of features in the data
             matrixDict params;
 
@@ -97,7 +97,7 @@ namespace LSTMNetwork {
                 std::tuple< Matrix, Matrix, Matrix, cacheTuple >
                 cell_state = LSTMCell::lstm_cell_forward(x_t, a_next, c_next, params, layer);
 
-                std::cout << "LSTM-Cell Forward successful" << std::endl;
+                // std::cout << "LSTM-Cell Forward successful" << std::endl;
 
                 //Extract the values of the current timestep cell
                 a_next = std::get<0>(cell_state), c_next = std::get<1>(cell_state);
@@ -129,7 +129,7 @@ namespace LSTMNetwork {
 
                 cache.push_back(cache_t);
 
-                std::cout << "LSTM Forward cache pushed successfully" << std::endl;
+                // std::cout << "LSTM Forward cache pushed successfully" << std::endl;
             }
 
             //Return cache and x-data for backprop

@@ -45,11 +45,11 @@ namespace MLP {
 
         /* Init the weight matrix of the current MLP layer */
         //std::cout << "He Normalizing:" << std::endl;
-        params["W"+std::to_string(layer)] = he_normalization(layer_dimensions[layer], layer_dimensions[layer-1]);
+        params["W"+std::to_string(layer+1)] = he_normalization(layer_dimensions[layer], layer_dimensions[layer-1]);
         // std::cout << "MLP Weights initialized successfully" << std::endl;
 
         /* Init the bias matrix of the current bias layer. Generates a matrix of shape[num units in current layer, 1 value] */
-        params["b"+std::to_string(layer)] = linalg::generateZeros(layer_dimensions[layer], 1);
+        params["b"+std::to_string(layer+1)] = linalg::generateZeros(layer_dimensions[layer], 1);
 
         return params;
     }
@@ -63,6 +63,9 @@ namespace MLP {
         if (layer == 1) {
             a_in = linalg::transpose(a_in);
         }
+
+        // std::cout << linalg::shape(W) << std::endl;
+        // std::cout << linalg::shape(a_in) << std::endl;
 
         const Matrix Z = linalg::add(linalg::matmul(W, a_in), b);
         const Matrix a_out = activation(Z);
