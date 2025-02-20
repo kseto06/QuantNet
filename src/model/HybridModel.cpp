@@ -61,7 +61,7 @@ namespace HybridModel {
         UnifiedGradients grads;
 
         //Adam optimizer variables
-        std::vector<std::vector<matrixDict>> Adam_params = {}; //2D to store v and s
+        std::vector<std::vector<matrixDict>> Adam_params; //2D to store v and s
         int t = 0;
         const double beta1 = 0.9;
         const double beta2 = 0.999;
@@ -327,8 +327,8 @@ namespace HybridModel {
         std::vector<double> predictions = linalg::reshape(finalPrediction);
         std::vector<double> targets = linalg::reshape(y_train);
 
-        // std::cout << predictions.size() << std::endl;
-        // std::cout << targets.size() << std::endl;
+        std::cout << predictions.size() << std::endl;
+        std::cout << targets.size() << std::endl;
 
         //predictions and current y_train are of the same mini-batch (BATCH_SIZE = 64):
         accumulated_loss += MSE(predictions, targets);
@@ -423,10 +423,12 @@ namespace HybridModel {
     }
 
     void init_Adam() {
+        Adam_params.resize(layer_types.size()); // Initialize Adam_params size
+    
         for (int i = 1; i <= layer_types.size(); i++) {
             matrixDict v; //Momentum
             matrixDict s; //Root Mean Square Propagation (RMSP)
-            std::cout << "Layer " << i << ": " << layer_types[i-1] << std::endl;
+            //std::cout << "Layer " << i << ": " << layer_types[i-1] << std::endl;
 
             if (layer_types[i-1] == "LSTM") {
                 // Forget gates
@@ -465,17 +467,9 @@ namespace HybridModel {
                 s["dW"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["W"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["W"+std::to_string(i)][0].size()));
                 s["db"+std::to_string(i)] = linalg::generateZeros(static_cast<int>(layer_params[i-1]["b"+std::to_string(i)].size()), static_cast<int>(layer_params[i-1]["b"+std::to_string(i)][0].size()));
             }
-
-            if (Adam_params.size() == layer_types.size()) {
-                Adam_params[i][0] = v; //Store v
-                Adam_params[i][1] = s; //Store s
-            } else {
-                Adam_params[i].push_back(v);
-                Adam_params[i].push_back(s);
-            }
-
-            std::cout << "Adam parameter initialization successful" << std::endl;
+            Adam_params[i-1] = {v, s};
         }
+        std::cout << "Adam parameter initialization successful" << std::endl;
     }
 
     void optimize() {
