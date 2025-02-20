@@ -1,6 +1,6 @@
 <h1 align= "center">QuantNet</h1>
 
-<p align="center">QuantNet is a Deep Learning framework for quantitative & investment analysis in C++. It uses an implementation of hybrid LSTM and MLP models and a custom data/feature engineering framework for long term time-series investment analysis applications, both built from scratch in C++. QuantNet is built with <b>zero external dependencies</b>, including linear algebra operations, using only the C++ standard library. 
+<p align="center">QuantNet is a Deep Learning framework for quantitative & investment analysis in C++. It uses an implementation of hybrid LSTM and MLP models and a custom data/feature engineering framework for long term time-series investment analysis applications, both built from scratch in C++. QuantNet is built with <b>zero external dependencies</b>, (e.g. all linear algebra operations made from scratch), using only the C++ standard library. 
 </p>
 
 <div style="text-align: center;">
